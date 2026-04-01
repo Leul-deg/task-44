@@ -1,10 +1,11 @@
 #!/bin/bash
 BASE="http://localhost:8080"
+FAIL=0
 
 check() {
   local label="$1" expected="$2" actual="$3"
   if [ "$actual" = "$expected" ]; then echo "  ✓ $label (HTTP $actual)"
-  else echo "  ✗ $label — expected $expected, got $actual"; fi
+  else echo "  ✗ $label — expected $expected, got $actual"; FAIL=$((FAIL+1)); fi
 }
 
 echo "============================================="
@@ -14,7 +15,9 @@ echo "============================================="
 # Login as employer
 EMP_CSRF=$(curl -s -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" \
   -d '{"username":"employer1","password":"Employer@12345"}' -c /tmp/emp.txt \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['csrfToken'])")
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('csrfToken',''))" 2>/dev/null)
+
+if [ -z "$EMP_CSRF" ]; then echo "FATAL: employer1 login failed"; exit 1; fi
 
 echo -e "\n[1] Employer GET /api/dashboards → 403"
 RESP=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/dashboards" -b /tmp/emp.txt)
@@ -40,7 +43,7 @@ check "Export dashboard" "403" "$RESP"
 # Login as admin to verify access works for authorized role
 ADMIN_CSRF=$(curl -s -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"Admin@123456789"}' -c /tmp/admin.txt \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['csrfToken'])")
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('csrfToken',''))" 2>/dev/null)
 
 echo -e "\n[5] Admin GET /api/dashboards → 200 (authorized)"
 RESP=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/dashboards" -b /tmp/admin.txt)
@@ -49,3 +52,4 @@ check "Admin list dashboards" "200" "$RESP"
 echo -e "\n============================================="
 echo "  RBAC TEST COMPLETE"
 echo "============================================="
+exit $FAIL

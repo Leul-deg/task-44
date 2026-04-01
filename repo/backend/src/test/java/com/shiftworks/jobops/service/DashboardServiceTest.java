@@ -8,6 +8,7 @@ import com.shiftworks.jobops.entity.User;
 import com.shiftworks.jobops.enums.UserRole;
 import com.shiftworks.jobops.exception.BusinessException;
 import com.shiftworks.jobops.repository.DashboardConfigRepository;
+import com.shiftworks.jobops.repository.ScheduledReportRepository;
 import com.shiftworks.jobops.repository.UserRepository;
 import com.shiftworks.jobops.security.AuthenticatedUser;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +36,7 @@ class DashboardServiceTest {
     @Mock private jakarta.persistence.EntityManager entityManager;
     @Mock private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     @Mock private AppProperties properties;
+    @Mock private ScheduledReportRepository scheduledReportRepository;
     @InjectMocks private DashboardService dashboardService;
 
     private AuthenticatedUser employerUser;
