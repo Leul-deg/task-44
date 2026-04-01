@@ -62,13 +62,13 @@ class RbacIntegrationTest {
     @Test
     void adminUsersEndpointDeniedWithoutAuth() throws Exception {
         mockMvc.perform(get("/api/admin/users"))
-            .andExpect(status().isUnauthorized());
+            .andExpect(status().isForbidden());
     }
 
     @Test
     void adminAuditEndpointDeniedWithoutAuth() throws Exception {
         mockMvc.perform(get("/api/admin/audit-logs"))
-            .andExpect(status().isUnauthorized());
+            .andExpect(status().isForbidden());
     }
 
     @Test
