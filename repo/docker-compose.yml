@@ -1,0 +1,53 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: shiftworks
+      MYSQL_USER: shiftworks
+      MYSQL_PASSWORD: ${DB_PASSWORD:-ShiftW0rks2026}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init-db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+      - path: .env.example
+        required: false
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/shiftworks?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: shiftworks
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-ShiftW0rks2026}
+      AES_SECRET_KEY: ${AES_SECRET_KEY:-0123456789abcdef0123456789abcdef}
+      FILE_STORAGE_PATH: /app/uploads
+      BACKUP_PATH: /app/backups
+    volumes:
+      - uploads:/app/uploads
+      - backups:/app/backups
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
+  uploads:
+  backups:

@@ -1,0 +1,51 @@
+#!/bin/bash
+BASE="http://localhost:8080"
+
+check() {
+  local label="$1" expected="$2" actual="$3"
+  if [ "$actual" = "$expected" ]; then echo "  ✓ $label (HTTP $actual)"
+  else echo "  ✗ $label — expected $expected, got $actual"; fi
+}
+
+echo "============================================="
+echo "  BACKUP/RESTORE RUNTIME TEST"
+echo "============================================="
+
+ADMIN_CSRF=$(curl -s -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"Admin@123456789"}' -c /tmp/admin.txt \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['csrfToken'])")
+
+echo -e "\n[1] List existing backups (admin)"
+RESP=$(curl -s -o /tmp/backups_list.json -w "%{http_code}" "$BASE/api/admin/backup/list" -b /tmp/admin.txt)
+COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/backups_list.json'))))" 2>/dev/null || echo "?")
+check "List backups ($COUNT found)" "200" "$RESP"
+
+echo -e "\n[2] Trigger backup (admin, step-up)"
+RESP=$(curl -s -o /tmp/backup.json -w "%{http_code}" -X POST "$BASE/api/admin/backup/trigger" \
+  -b /tmp/admin.txt -H "Content-Type: application/json" -H "X-XSRF-TOKEN: $ADMIN_CSRF" \
+  -d '{"stepUpPassword":"Admin@123456789"}')
+echo "  Response: $(cat /tmp/backup.json)"
+check "Trigger backup" "200" "$RESP"
+
+echo -e "\n[3] Verify backup count increased"
+RESP=$(curl -s -o /tmp/backups_list2.json -w "%{http_code}" "$BASE/api/admin/backup/list" -b /tmp/admin.txt)
+COUNT2=$(python3 -c "import json; print(len(json.load(open('/tmp/backups_list2.json'))))" 2>/dev/null || echo "?")
+echo "  Backups before: $COUNT, after: $COUNT2"
+if [ "$COUNT2" -gt "$COUNT" ] 2>/dev/null; then echo "  ✓ Backup count increased"; else echo "  ✗ Backup count did not increase"; fi
+
+echo -e "\n[4] Employer cannot list backups → 403"
+EMP_CSRF=$(curl -s -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" \
+  -d '{"username":"employer1","password":"Employer@12345"}' -c /tmp/emp.txt \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['csrfToken'])")
+RESP=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/admin/backup/list" -b /tmp/emp.txt)
+check "Employer list backups blocked" "403" "$RESP"
+
+echo -e "\n[5] Employer cannot trigger backup → 403"
+RESP=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/admin/backup/trigger" \
+  -b /tmp/emp.txt -H "Content-Type: application/json" -H "X-XSRF-TOKEN: $EMP_CSRF" \
+  -d '{"stepUpPassword":"Employer@12345"}')
+check "Employer trigger backup blocked" "403" "$RESP"
+
+echo -e "\n============================================="
+echo "  BACKUP TEST COMPLETE"
+echo "============================================="

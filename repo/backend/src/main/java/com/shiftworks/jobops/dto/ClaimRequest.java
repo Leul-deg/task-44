@@ -1,0 +1,9 @@
+package com.shiftworks.jobops.dto;
+
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+public record ClaimRequest(@NotNull @Min(1) Long jobPostingId,
+                           @NotBlank String description) {
+}
