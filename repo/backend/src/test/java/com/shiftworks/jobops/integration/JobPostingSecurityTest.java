@@ -1,6 +1,7 @@
 package com.shiftworks.jobops.integration;
 
 import com.shiftworks.jobops.controller.JobPostingController;
+import com.shiftworks.jobops.config.AppProperties;
 import com.shiftworks.jobops.config.SecurityConfig;
 import com.shiftworks.jobops.entity.User;
 import com.shiftworks.jobops.entity.UserSession;
@@ -17,9 +18,11 @@ import com.shiftworks.jobops.service.SessionService;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
@@ -34,6 +37,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(JobPostingController.class)
 @Import({SecurityConfig.class, SessionAuthFilter.class, CsrfValidationFilter.class,
          RateLimitFilter.class, SecurityHeadersFilter.class})
+@EnableConfigurationProperties(AppProperties.class)
+@TestPropertySource(locations = "classpath:application-test.properties")
 class JobPostingSecurityTest {
 
     @Autowired private MockMvc mockMvc;

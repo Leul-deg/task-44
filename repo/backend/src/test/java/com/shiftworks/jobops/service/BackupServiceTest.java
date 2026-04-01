@@ -73,11 +73,15 @@ class BackupServiceTest {
         AppProperties.Storage storage = new AppProperties.Storage();
         storage.setBackupPath(System.getProperty("java.io.tmpdir") + "/shiftworks-test-backups");
         when(appProperties.getStorage()).thenReturn(storage);
+        when(backupRecordRepository.save(any(BackupRecord.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Exception thrown = assertThrows(Exception.class, () -> backupService.performBackup(),
-            "Expected exception when mysqldump is not available in test environment");
+        BackupRecord result = backupService.performBackup();
 
-        assertNotNull(thrown.getMessage());
+        assertNotNull(result);
+        assertEquals(BackupStatus.FAILED, result.getStatus());
+        assertNotNull(result.getFilename());
+        assertTrue(result.isEncrypted());
+        verify(backupRecordRepository).save(any(BackupRecord.class));
     }
 
     @Test
@@ -85,16 +89,13 @@ class BackupServiceTest {
         AppProperties.Storage storage = new AppProperties.Storage();
         storage.setBackupPath(System.getProperty("java.io.tmpdir") + "/shiftworks-test-backups");
         when(appProperties.getStorage()).thenReturn(storage);
+        when(backupRecordRepository.save(any(BackupRecord.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        try {
-            BackupRecord result = backupService.performBackup();
-            assertTrue(result.getFilename().matches("backup-\\d{8}-\\d{6}\\.sql\\.gz\\.enc"));
-            assertTrue(result.isEncrypted());
-            verify(backupRecordRepository).save(any(BackupRecord.class));
-        } catch (Exception e) {
-            assertTrue(e.getMessage().contains("mysqldump") || e.getMessage().contains("Cannot run program")
-                    || e.getMessage().contains("No such file") || e instanceof java.io.IOException,
-                "Expected mysqldump-related failure, got: " + e.getClass().getName() + ": " + e.getMessage());
-        }
+        BackupRecord result = backupService.performBackup();
+
+        assertNotNull(result);
+        assertTrue(result.getFilename().matches("backup-\\d{8}-\\d{6}\\.sql\\.gz\\.enc"));
+        assertTrue(result.isEncrypted());
+        verify(backupRecordRepository).save(any(BackupRecord.class));
     }
 }

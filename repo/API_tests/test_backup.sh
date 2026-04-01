@@ -1,10 +1,11 @@
 #!/bin/bash
 BASE="http://localhost:8080"
+FAIL=0
 
 check() {
   local label="$1" expected="$2" actual="$3"
   if [ "$actual" = "$expected" ]; then echo "  ✓ $label (HTTP $actual)"
-  else echo "  ✗ $label — expected $expected, got $actual"; fi
+  else echo "  ✗ $label — expected $expected, got $actual"; FAIL=$((FAIL+1)); fi
 }
 
 echo "============================================="
@@ -13,7 +14,9 @@ echo "============================================="
 
 ADMIN_CSRF=$(curl -s -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"Admin@123456789"}' -c /tmp/admin.txt \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['csrfToken'])")
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('csrfToken',''))" 2>/dev/null)
+
+if [ -z "$ADMIN_CSRF" ]; then echo "FATAL: admin login failed"; exit 1; fi
 
 echo -e "\n[1] List existing backups (admin)"
 RESP=$(curl -s -o /tmp/backups_list.json -w "%{http_code}" "$BASE/api/admin/backup/list" -b /tmp/admin.txt)
@@ -36,7 +39,7 @@ if [ "$COUNT2" -gt "$COUNT" ] 2>/dev/null; then echo "  ✓ Backup count increas
 echo -e "\n[4] Employer cannot list backups → 403"
 EMP_CSRF=$(curl -s -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" \
   -d '{"username":"employer1","password":"Employer@12345"}' -c /tmp/emp.txt \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['csrfToken'])")
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('csrfToken',''))" 2>/dev/null)
 RESP=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/admin/backup/list" -b /tmp/emp.txt)
 check "Employer list backups blocked" "403" "$RESP"
 
@@ -49,3 +52,4 @@ check "Employer trigger backup blocked" "403" "$RESP"
 echo -e "\n============================================="
 echo "  BACKUP TEST COMPLETE"
 echo "============================================="
+exit $FAIL

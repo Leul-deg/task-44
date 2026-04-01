@@ -10,6 +10,8 @@ RUN mvn -B -ntp clean package -DskipTests
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y --no-install-recommends default-mysql-client && rm -rf /var/lib/apt/lists/*
+
 ENV JAVA_TOOL_OPTIONS="-XX:+UseContainerSupport"
 
 COPY --from=builder /app/target/*.jar app.jar

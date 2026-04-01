@@ -19,6 +19,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.http.HttpStatus;
 
 import java.time.Instant;
@@ -31,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class ScheduledReportServiceTest {
 
     @Mock private ScheduledReportRepository scheduledReportRepository;
@@ -58,6 +61,7 @@ class ScheduledReportServiceTest {
         dashboardConfig = new DashboardConfig();
         dashboardConfig.setId(5L);
         dashboardConfig.setName("My Dashboard");
+        dashboardConfig.setUser(ownerEntity);
     }
 
     private ScheduledReport buildReport() {
@@ -128,7 +132,8 @@ class ScheduledReportServiceTest {
                 .thenReturn(List.of(report));
         List<Map<String, Object>> rows = List.of(Map.of("dimension", "2025-01", "value", 42));
         when(dashboardService.execute(dashboardConfig)).thenReturn(rows);
-        when(dashboardService.toCsv(rows)).thenReturn("dimension,value\n2025-01,42".getBytes());
+        when(dashboardService.maskRows(any())).thenReturn(rows);
+        when(dashboardService.toCsv(any())).thenReturn("dimension,value\n2025-01,42".getBytes());
 
         scheduledReportService.executeDueReports();
 

@@ -1,6 +1,7 @@
 package com.shiftworks.jobops.integration;
 
 import com.shiftworks.jobops.controller.AuthController;
+import com.shiftworks.jobops.config.AppProperties;
 import com.shiftworks.jobops.config.SecurityConfig;
 import com.shiftworks.jobops.security.CsrfValidationFilter;
 import com.shiftworks.jobops.security.RateLimitFilter;
@@ -11,10 +12,12 @@ import com.shiftworks.jobops.service.CaptchaService;
 import com.shiftworks.jobops.service.SessionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -25,6 +28,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(AuthController.class)
 @Import({SecurityConfig.class, SessionAuthFilter.class, CsrfValidationFilter.class,
          RateLimitFilter.class, SecurityHeadersFilter.class})
+@EnableConfigurationProperties(AppProperties.class)
+@TestPropertySource(locations = "classpath:application-test.properties")
 class AuthIntegrationTest {
 
     @Autowired private MockMvc mockMvc;
@@ -41,11 +46,11 @@ class AuthIntegrationTest {
     }
 
     @Test
-    void registerEndpointIsPublic() throws Exception {
+    void registerEndpointRequiresAdmin() throws Exception {
         mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"username\":\"new\",\"email\":\"a@b.com\",\"password\":\"StrongPass123!\"}"))
-            .andExpect(status().isCreated());
+            .andExpect(status().isUnauthorized());
     }
 
     @Test
