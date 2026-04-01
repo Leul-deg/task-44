@@ -1,0 +1,13 @@
+node_modules/
+dist/
+target/
+backend/target/
+frontend/node_modules/
+frontend/dist/
+.idea/
+.vscode/
+.env
+uploads/
+backups/
+*.log
+*.jar
