@@ -1,21 +1,13 @@
 <script setup>
 import { onMounted, ref } from 'vue';
 import jobsApi from '@/api/jobs';
+import { JOB_STATUS_TYPE } from '@/constants/statuses';
 
 const loading = ref(false);
 const summary = ref({ total: 0, published: 0, pendingReview: 0, rejected: 0 });
 const recent = ref([]);
 
-const statusType = {
-  DRAFT: 'info',
-  PENDING_REVIEW: 'warning',
-  APPROVED: 'success',
-  PUBLISHED: 'success',
-  REJECTED: 'danger',
-  UNPUBLISHED: 'info',
-  TAKEN_DOWN: 'danger',
-  APPEAL_PENDING: 'warning'
-};
+const statusType = JOB_STATUS_TYPE;
 
 const formatLocation = (_, __, row) => `${row.locationCity}, ${row.locationState}`;
 const formatDate = (_, __, row) => new Date(row.createdAt).toLocaleDateString();

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import api, { setCsrfTokenResolver, setUnauthorizedHandler } from '@/api/axios';
 import { ElMessage } from 'element-plus';
+import logger from '@/utils/logger';
 
 const USER_KEY = 'shiftworks-user';
 const CSRF_KEY = 'shiftworks-csrf';
@@ -67,7 +68,7 @@ export const useAuthStore = defineStore('auth', {
         try {
           await this.fetchMe();
         } catch (error) {
-          // ignore, interceptor will handle redirect
+          logger.warn('AuthStore', 'Session restore failed, interceptor will handle redirect', error?.message);
         }
       }
       this.initialized = true;

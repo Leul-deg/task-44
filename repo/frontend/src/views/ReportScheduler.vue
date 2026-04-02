@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import reportApi from '@/api/reports';
 import dashboardsApi from '@/api/dashboards';
+import logger from '@/utils/logger';
 
 const schedules = ref([]);
 const dashboards = ref([]);
@@ -90,7 +91,7 @@ const save = async () => {
     closeDialog();
     loadSchedules();
   } catch (error) {
-    // errors are surfaced through interceptor
+    logger.error('ReportScheduler', 'Failed to save schedule', error?.message);
   }
 };
 

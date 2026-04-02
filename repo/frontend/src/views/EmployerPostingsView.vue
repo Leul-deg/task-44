@@ -3,6 +3,7 @@ import { onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import jobsApi from '@/api/jobs';
 import appealsApi from '@/api/appeals';
+import { JOB_STATUS_TYPE } from '@/constants/statuses';
 const postings = ref([]);
 const loading = ref(false);
 const search = ref('');
@@ -18,16 +19,7 @@ const tabs = [
   { label: 'Taken Down', value: 'TAKEN_DOWN' }
 ];
 
-const statusType = {
-  DRAFT: 'info',
-  PENDING_REVIEW: 'warning',
-  APPROVED: 'success',
-  PUBLISHED: 'success',
-  REJECTED: 'danger',
-  UNPUBLISHED: 'info',
-  TAKEN_DOWN: 'danger',
-  APPEAL_PENDING: 'warning'
-};
+const statusType = JOB_STATUS_TYPE;
 
 const fetchPostings = async () => {
   loading.value = true;

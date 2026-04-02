@@ -6,6 +6,7 @@ import { diffWords } from 'diff';
 import reviewApi from '@/api/review';
 import StepUpVerification from '@/components/common/StepUpVerification.vue';
 import DOMPurify from 'dompurify';
+import { JOB_STATUS_TYPE } from '@/constants/statuses';
 
 const route = useRoute();
 const router = useRouter();
@@ -95,13 +96,7 @@ const handleStepUp = (password) => {
   stepUpVisible.value = false;
 };
 
-const statusBadges = {
-  PENDING_REVIEW: 'warning',
-  APPROVED: 'success',
-  REJECTED: 'danger',
-  PUBLISHED: 'success',
-  TAKEN_DOWN: 'danger'
-};
+const statusBadges = JOB_STATUS_TYPE;
 </script>
 
 <template>

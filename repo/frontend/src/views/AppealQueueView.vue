@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import appealsApi from '@/api/appeals';
+import { APPEAL_STATUS_TYPE } from '@/constants/statuses';
 
 const router = useRouter();
 const appeals = ref([]);
@@ -16,11 +17,7 @@ const tabs = [
   { label: 'Denied', value: 'DENIED' }
 ];
 
-const statusType = {
-  PENDING: 'warning',
-  GRANTED: 'success',
-  DENIED: 'danger'
-};
+const statusType = APPEAL_STATUS_TYPE;
 
 const fetchAppeals = async () => {
   loading.value = true;
