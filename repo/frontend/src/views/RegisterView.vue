@@ -64,8 +64,8 @@ const handleRegister = async () => {
 <template>
   <div class="auth-page">
     <el-card class="auth-card" shadow="hover">
-      <h1>Join ShiftWorks</h1>
-      <p class="auth-card__subtitle">Create your employer profile to begin publishing shifts</p>
+      <h1>Create New User</h1>
+      <p class="auth-card__subtitle">Provision a new user account (admin only)</p>
       <el-alert v-if="errorMessage" type="error" :closable="false" class="mb-16">
         {{ errorMessage }}
       </el-alert>
@@ -97,8 +97,7 @@ const handleRegister = async () => {
           Create Account
         </el-button>
         <div class="auth-card__footer">
-          <span>Already have an account?</span>
-          <RouterLink to="/login">Sign in</RouterLink>
+          <RouterLink to="/admin/users">Back to User Directory</RouterLink>
         </div>
       </el-form>
     </el-card>

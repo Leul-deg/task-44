@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import appealsApi from '@/api/appeals';
 import FileUpload from '@/components/common/FileUpload.vue';
+import { APPEAL_STATUS_TYPE } from '@/constants/statuses';
 
 const route = useRoute();
 const router = useRouter();
@@ -44,11 +45,7 @@ const processAppeal = async () => {
   loadAppeal();
 };
 
-const statusType = {
-  PENDING: 'warning',
-  GRANTED: 'success',
-  DENIED: 'danger'
-};
+const statusType = APPEAL_STATUS_TYPE;
 </script>
 
 <template>

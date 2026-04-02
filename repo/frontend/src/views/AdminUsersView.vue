@@ -3,6 +3,8 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import adminApi from '@/api/admin';
 import StepUpVerification from '@/components/common/StepUpVerification.vue';
+import { validatePasswordComplexity, getPasswordChecklist, PASSWORD_RULES, USER_ROLE_TYPE, USER_STATUS_TYPE } from '@/constants/statuses';
+import { CircleCheckFilled, CircleCloseFilled } from '@element-plus/icons-vue';
 
 const roles = ['EMPLOYER', 'REVIEWER', 'ADMIN'];
 const statuses = ['ACTIVE', 'LOCKED', 'DISABLED'];
@@ -13,6 +15,7 @@ const users = ref([]);
 const loading = ref(false);
 
 const createDialog = reactive({ visible: false, username: '', email: '', password: '', role: 'EMPLOYER' });
+const passwordChecklist = computed(() => getPasswordChecklist(createDialog.password));
 const editDialog = reactive({ visible: false, id: null, email: '', status: 'ACTIVE' });
 const roleDialog = reactive({ visible: false, id: null, role: 'EMPLOYER' });
 const resetDialog = reactive({ visible: false, password: '' });
@@ -57,8 +60,8 @@ const openCreate = () => {
 };
 
 const submitCreate = async () => {
-  if (createDialog.password.length < 12) {
-    ElMessage.warning('Password must be at least 12 characters');
+  if (!validatePasswordComplexity(createDialog.password)) {
+    ElMessage.warning('Password must be at least 12 characters with uppercase, lowercase, digit, and special character');
     return;
   }
   await adminApi.createUser({
@@ -127,17 +130,8 @@ const resetPassword = async (user) => {
 
 const canUnlock = (user) => user.status === 'LOCKED';
 
-const tableRoleTag = (role) => ({
-  EMPLOYER: 'info',
-  REVIEWER: 'warning',
-  ADMIN: 'success'
-}[role] || 'info');
-
-const tableStatusTag = (status) => ({
-  ACTIVE: 'success',
-  LOCKED: 'warning',
-  DISABLED: 'danger'
-}[status] || 'info');
+const tableRoleTag = (role) => USER_ROLE_TYPE[role] || 'info';
+const tableStatusTag = (status) => USER_STATUS_TYPE[status] || 'info';
 </script>
 
 <template>
@@ -205,7 +199,14 @@ const tableStatusTag = (status) => ({
         </el-form-item>
         <el-form-item label="Password">
           <el-input v-model="createDialog.password" type="password" show-password />
-          <small class="muted">Min 12 chars with uppercase, lowercase, digit, special.</small>
+          <ul class="password-rules" v-if="createDialog.password">
+            <li v-for="rule in PASSWORD_RULES" :key="rule.key" :class="{ pass: passwordChecklist[rule.key] }">
+              <el-icon v-if="passwordChecklist[rule.key]" :size="14" color="#13ce66"><CircleCheckFilled /></el-icon>
+              <el-icon v-else :size="14" color="#f56c6c"><CircleCloseFilled /></el-icon>
+              {{ rule.label }}
+            </li>
+          </ul>
+          <small v-else class="muted">Min 12 chars with uppercase, lowercase, digit, special.</small>
         </el-form-item>
         <el-form-item label="Role">
           <el-select v-model="createDialog.role">
@@ -291,5 +292,24 @@ const tableStatusTag = (status) => ({
 small.muted {
   display: block;
   margin-top: 4px;
+}
+
+.password-rules {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0 0;
+  font-size: 13px;
+}
+
+.password-rules li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.8;
+  color: #6b7280;
+}
+
+.password-rules li.pass {
+  color: #13ce66;
 }
 </style>

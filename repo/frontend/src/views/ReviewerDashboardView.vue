@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue';
 import reviewApi from '@/api/review';
+import { REVIEW_ACTION_TYPE } from '@/constants/statuses';
 
 const loading = ref(false);
 const metrics = ref({ pendingReviews: 0, pendingAppeals: 0, reviewedToday: 0, recentActions: [] });
@@ -17,11 +18,7 @@ const loadDashboard = async () => {
 
 onMounted(loadDashboard);
 
-const statusType = {
-  APPROVE: 'success',
-  REJECT: 'danger',
-  TAKEDOWN: 'warning'
-};
+const statusType = { ...REVIEW_ACTION_TYPE, APPROVE: 'success', REJECT: 'danger', TAKEDOWN: 'warning' };
 </script>
 
 <template>

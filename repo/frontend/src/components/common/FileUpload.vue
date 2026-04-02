@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useAuthStore } from '@/stores/auth';
 import filesApi from '@/api/files';
+import logger from '@/utils/logger';
 
 const props = defineProps({
   entityType: { type: String, required: true },
@@ -20,8 +21,8 @@ const loadFiles = async () => {
   try {
     const { data } = await filesApi.getEntityFiles(props.entityType, props.entityId);
     files.value = data;
-  } catch {
-    // entity may not have files yet
+  } catch (err) {
+    logger.debug('FileUpload', `No files for ${props.entityType}/${props.entityId}: ${err?.message}`);
     files.value = [];
   } finally {
     loading.value = false;

@@ -5,6 +5,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import jobsApi from '@/api/jobs';
 import appealsApi from '@/api/appeals';
 import StepUpVerification from '@/components/common/StepUpVerification.vue';
+import { JOB_STATUS_TYPE } from '@/constants/statuses';
 
 const route = useRoute();
 const router = useRouter();
@@ -17,16 +18,7 @@ const appealVisible = ref(false);
 const appealReason = ref('');
 const jobId = route.params.id;
 
-const statusType = {
-  DRAFT: 'info',
-  PENDING_REVIEW: 'warning',
-  APPROVED: 'success',
-  PUBLISHED: 'success',
-  REJECTED: 'danger',
-  UNPUBLISHED: 'info',
-  TAKEN_DOWN: 'danger',
-  APPEAL_PENDING: 'warning'
-};
+const statusType = JOB_STATUS_TYPE;
 
 const canEdit = computed(() => job.value?.status === 'DRAFT');
 const canSubmit = computed(() => job.value?.status === 'DRAFT');
