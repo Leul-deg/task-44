@@ -37,6 +37,8 @@ import java.util.stream.IntStream;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNotNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -77,7 +79,13 @@ class JobPostingServiceTest {
         location.setActive(true);
         when(locationRepository.findById(1L)).thenReturn(Optional.of(location));
 
-        when(jobPostingRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(jobPostingRepository.save(any())).thenAnswer(invocation -> {
+            JobPosting saved = invocation.getArgument(0);
+            if (saved.getId() == null) {
+                saved.setId(2L);
+            }
+            return saved;
+        });
     }
 
     private static AppProperties buildProps() {
@@ -149,6 +157,20 @@ class JobPostingServiceTest {
     void createDraftSuccess() {
         var response = jobPostingService.createJob(baseRequest(), authUser);
         assertEquals(JobStatus.DRAFT, response.status());
+    }
+
+    @Test
+    void createDraftAuditHasAfterSnapshot() {
+        jobPostingService.createJob(baseRequest(), authUser);
+
+        verify(auditService).log(
+            eq(authUser.id()),
+            eq("JOB_CREATED"),
+            eq("JOB_POSTING"),
+            anyLong(),
+            isNull(),
+            isNotNull()
+        );
     }
 
     @Test
@@ -290,5 +312,93 @@ class JobPostingServiceTest {
         var ex = assertThrows(BusinessException.class, () -> jobPostingService.updateJob(job.getId(), baseRequest(), authUser));
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
         assertTrue(ex.getMessage().contains("Only draft or rejected"));
+    }
+
+    @Test
+    void editAuditHasBeforeAndAfter() {
+        JobPosting job = buildJob(JobStatus.DRAFT);
+        when(jobPostingRepository.findByIdAndEmployer_Id(job.getId(), authUser.id())).thenReturn(Optional.of(job));
+
+        JobPostingRequest updatedRequest = new JobPostingRequest(
+            "Updated Title",
+            "This description is longer than twenty characters and has been updated.",
+            category.getId(),
+            location.getId(),
+            PayType.HOURLY,
+            SettlementType.WEEKLY,
+            BigDecimal.valueOf(22),
+            6,
+            BigDecimal.valueOf(38),
+            "555-123-4567",
+            List.of("tag1", "tag2"),
+            LocalDate.now(),
+            LocalDate.now().plusDays(20)
+        );
+
+        jobPostingService.updateJob(job.getId(), updatedRequest, authUser);
+
+        verify(auditService).log(
+            eq(authUser.id()),
+            eq("JOB_EDITED"),
+            eq("JOB_POSTING"),
+            eq(job.getId()),
+            isNotNull(),
+            isNotNull()
+        );
+    }
+
+    // ----- audit before/after tests -----
+
+    @Test
+    void submitAuditHasBeforeAndAfter() {
+        JobPosting job = buildJob(JobStatus.DRAFT);
+        when(jobPostingRepository.findByIdAndEmployer_Id(job.getId(), authUser.id())).thenReturn(Optional.of(job));
+
+        jobPostingService.submitForReview(job.getId(), authUser);
+
+        verify(auditService).log(
+            eq(authUser.id()),
+            eq("JOB_SUBMITTED"),
+            eq("JOB_POSTING"),
+            eq(job.getId()),
+            isNotNull(),
+            isNotNull()
+        );
+    }
+
+    @Test
+    void publishAuditHasBeforeAndAfter() {
+        JobPosting job = buildJob(JobStatus.APPROVED);
+        when(jobPostingRepository.findByIdAndEmployer_Id(job.getId(), authUser.id())).thenReturn(Optional.of(job));
+        when(stepUpVerificationService.verify(authUser.id(), "pass")).thenReturn(true);
+        var request = new com.shiftworks.jobops.dto.PublishJobRequest("pass");
+
+        jobPostingService.publish(job.getId(), request, authUser);
+
+        verify(auditService).log(
+            eq(authUser.id()),
+            eq("JOB_PUBLISHED"),
+            eq("JOB_POSTING"),
+            eq(job.getId()),
+            isNotNull(),
+            isNotNull()
+        );
+    }
+
+    @Test
+    void unpublishAuditHasBeforeAndAfter() {
+        JobPosting job = buildJob(JobStatus.PUBLISHED);
+        when(jobPostingRepository.findByIdAndEmployer_Id(job.getId(), authUser.id())).thenReturn(Optional.of(job));
+
+        jobPostingService.unpublish(job.getId(), authUser);
+
+        verify(auditService).log(
+            eq(authUser.id()),
+            eq("JOB_UNPUBLISHED"),
+            eq("JOB_POSTING"),
+            eq(job.getId()),
+            isNotNull(),
+            isNotNull()
+        );
     }
 }

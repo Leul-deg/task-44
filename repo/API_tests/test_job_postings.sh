@@ -3,6 +3,9 @@ BASE=http://localhost:8080/api
 PASS=0; FAIL=0
 ADMIN_COOKIE=/tmp/api_admin.cookie
 EMPLOYER_COOKIE=/tmp/api_emp.cookie
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/lib/test_env.sh"
+require_admin_password
 
 jp() { python3 -c "import sys,json; print(json.load(sys.stdin).get('$1',''))" 2>/dev/null; }
 
@@ -43,7 +46,7 @@ get_or_create_location() {
 
 # Admin login
 ADMIN_OUT=$(curl -s -c "$ADMIN_COOKIE" -X POST "$BASE/auth/login" \
-  -H "Content-Type: application/json" -d '{"username":"admin","password":"Admin@123456789"}')
+  -H "Content-Type: application/json" -d "$(admin_login_json)")
 CSRF_ADMIN=$(echo "$ADMIN_OUT" | jp csrfToken)
 
 CATEGORY_ID=$(get_or_create_category "JobTestCat" "$ADMIN_COOKIE" "$CSRF_ADMIN")

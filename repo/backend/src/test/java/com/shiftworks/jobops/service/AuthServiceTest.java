@@ -19,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
@@ -85,6 +86,25 @@ class AuthServiceTest {
         LoginRequest request = new LoginRequest(user.getUsername(), "secret", null, null);
         var result = authService.login(request, httpRequest(), true);
         assertTrue(result.isSuccess());
+        verify(auditService).log(user.getId(), "USER_LOGIN", "USER", user.getId(), null, null);
+    }
+
+    @Test
+    void loginMarksPasswordExpiredAtDay90Boundary() {
+        User user = buildUser();
+        user.setPasswordChangedAt(java.time.Instant.now().minus(90, java.time.temporal.ChronoUnit.DAYS).minusSeconds(5));
+        when(userRepository.findByUsername(user.getUsername())).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("secret", user.getPasswordHash())).thenReturn(true);
+        UserSession session = new UserSession();
+        session.setId("ssn");
+        session.setCsrfToken("csrf");
+        when(sessionService.createSession(eq(user), anyString(), anyString())).thenReturn(session);
+
+        LoginRequest request = new LoginRequest(user.getUsername(), "secret", null, null);
+        var result = authService.login(request, httpRequest(), true);
+
+        assertTrue(result.isSuccess());
+        assertTrue(result.response().passwordExpired());
     }
 
     @Test
@@ -98,6 +118,7 @@ class AuthServiceTest {
         assertFalse(result.isSuccess());
         assertEquals(1, user.getFailedLoginAttempts());
         verify(userRepository).save(user);
+        verify(auditService).log(user.getId(), "USER_LOGIN_FAILED", "USER", user.getId(), null, null);
     }
 
     @Test
@@ -124,17 +145,40 @@ class AuthServiceTest {
     }
 
     @Test
+    void loginMissingUserUsesValidDummyBcryptHash() {
+        when(userRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+        when(passwordEncoder.matches(anyString(), anyString())).thenAnswer(invocation -> {
+            String rawPassword = invocation.getArgument(0);
+            String encodedPassword = invocation.getArgument(1);
+            assertDoesNotThrow(() -> new BCryptPasswordEncoder().matches(rawPassword, encodedPassword));
+            return false;
+        });
+
+        LoginRequest request = new LoginRequest("ghost", "secret", null, null);
+        var result = authService.login(request, httpRequest(), true);
+
+        assertFalse(result.isSuccess());
+        assertFalse(result.failure().captchaRequired());
+        verify(passwordEncoder).matches(eq("secret"), anyString());
+    }
+
+    @Test
     void registerSuccess() {
         when(userRepository.findByUsername("newuser")).thenReturn(Optional.empty());
         when(userRepository.findByEmail("new@example.com")).thenReturn(Optional.empty());
         when(passwordPolicyService.validate(anyString())).thenReturn(List.of());
         when(passwordEncoder.encode("StrongPassword123!")).thenReturn("hash");
-        when(userRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userRepository.save(any())).thenAnswer(invocation -> {
+            User saved = invocation.getArgument(0);
+            saved.setId(2L);
+            return saved;
+        });
 
         RegisterRequest request = new RegisterRequest("newuser", "new@example.com", "StrongPassword123!");
-        var response = authService.register(request);
+        var response = authService.register(request, 99L);
         assertEquals("newuser", response.username());
         verify(userRepository).save(any());
+        verify(auditService).log(eq(99L), eq("USER_CREATED"), eq("USER"), eq(2L), isNull(), isNotNull());
     }
 
     @Test
@@ -142,7 +186,7 @@ class AuthServiceTest {
         User existing = buildUser();
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(existing));
         RegisterRequest request = new RegisterRequest("alice", "new@example.com", "StrongPassword123!");
-        var ex = assertThrows(BusinessException.class, () -> authService.register(request));
+        var ex = assertThrows(BusinessException.class, () -> authService.register(request, 99L));
         assertEquals(HttpStatus.CONFLICT, ex.getStatus());
     }
 }

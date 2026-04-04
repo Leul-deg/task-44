@@ -42,6 +42,9 @@ public class ClaimService {
 
     @Transactional(readOnly = true)
     public PageResponse<ClaimResponse> listClaims(AuthenticatedUser user, String statusValue, int page, int size) {
+        if (user.role() != UserRole.ADMIN && user.role() != UserRole.EMPLOYER) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "claim: Access denied");
+        }
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Specification<Claim> spec = (root, query, cb) -> {
             Predicate predicate = cb.conjunction();

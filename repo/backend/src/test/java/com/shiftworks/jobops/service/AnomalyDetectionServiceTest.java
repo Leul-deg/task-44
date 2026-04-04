@@ -86,4 +86,15 @@ class AnomalyDetectionServiceTest {
 
         verify(alertRepository, never()).save(any());
     }
+
+    @Test
+    void malformedApprovalCountsDoNotCrash() {
+        when(reviewActionRepository.countTodayTakedowns()).thenReturn(0L);
+        when(reviewActionRepository.todayApprovalCounts()).thenReturn(new Object[]{0L});
+        when(claimRepository.countTodayClaims()).thenReturn(0L);
+        when(jobPostingRepository.countByStatus(any())).thenReturn(0L);
+
+        assertDoesNotThrow(() -> anomalyDetectionService.detectAnomalies());
+        verify(alertRepository, never()).save(any());
+    }
 }

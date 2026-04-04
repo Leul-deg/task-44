@@ -22,7 +22,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,6 +40,11 @@ class SessionAuthFilterTest {
         sessionProps.setIdleTimeoutMinutes(30);
         sessionProps.setAbsoluteTimeoutHours(12);
         appProperties.setSession(sessionProps);
+        AppProperties.Security securityProps = new AppProperties.Security();
+        AppProperties.Password passwordProps = new AppProperties.Password();
+        passwordProps.setRotationDays(90);
+        securityProps.setPassword(passwordProps);
+        appProperties.setSecurity(securityProps);
         filter = new SessionAuthFilter(sessionService, appProperties);
     }
 
@@ -129,6 +133,38 @@ class SessionAuthFilterTest {
 
         assertEquals(403, response.getStatus());
         assertTrue(response.getContentAsString().contains("passwordExpired"));
+    }
+
+    @Test
+    void passwordExactlyAtRotationBoundaryReturns403() throws Exception {
+        User user = buildUser();
+        user.setPasswordChangedAt(Instant.now().minus(90, ChronoUnit.DAYS).minusSeconds(5));
+        UserSession session = buildSession(user, Instant.now(), Instant.now().plus(12, ChronoUnit.HOURS));
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/jobs");
+        request.setCookies(new Cookie(SessionService.SESSION_COOKIE, "session-123"));
+        when(sessionService.findValidSession("session-123")).thenReturn(Optional.of(session));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        assertEquals(403, response.getStatus());
+        assertTrue(response.getContentAsString().contains("passwordExpired"));
+    }
+
+    @Test
+    void passwordBelowRotationBoundaryIsAllowed() throws Exception {
+        User user = buildUser();
+        user.setPasswordChangedAt(Instant.now().minus(89, ChronoUnit.DAYS));
+        UserSession session = buildSession(user, Instant.now(), Instant.now().plus(12, ChronoUnit.HOURS));
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/jobs");
+        request.setCookies(new Cookie(SessionService.SESSION_COOKIE, "session-123"));
+        when(sessionService.findValidSession("session-123")).thenReturn(Optional.of(session));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        assertEquals(200, response.getStatus());
+        verify(filterChain).doFilter(request, response);
     }
 
     @Test

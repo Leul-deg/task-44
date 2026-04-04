@@ -53,5 +53,6 @@ describe('Sidebar role-based menus', () => {
       }
     });
     expect(wrapper.text()).toContain('Users');
+    expect(wrapper.text()).toContain('Job Items');
   });
 });

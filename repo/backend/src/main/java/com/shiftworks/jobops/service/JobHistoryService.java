@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -38,6 +39,20 @@ public class JobHistoryService {
     public JobPostingHistory findLatestSnapshot(Long jobPostingId) {
         return jobPostingHistoryRepository.findTop1ByJobPosting_IdAndSnapshotJsonIsNotNullOrderByCreatedAtDesc(jobPostingId)
             .orElse(null);
+    }
+
+    /**
+     * Returns the snapshot from the previous PENDING_REVIEW submission, or null if this is the
+     * first submission. Used by the reviewer diff view to compare the prior submitted version
+     * against the current (resubmitted) version.
+     *
+     * History entries are ordered newest-first. Index 0 is the current submission; index 1,
+     * if present, is the prior submission — that is the "before" snapshot for the diff.
+     */
+    public JobPostingHistory findPreviousSubmissionSnapshot(Long jobPostingId) {
+        List<JobPostingHistory> submissions = jobPostingHistoryRepository
+            .findByJobPosting_IdAndNewStatusOrderByCreatedAtDesc(jobPostingId, JobStatus.PENDING_REVIEW);
+        return submissions.size() >= 2 ? submissions.get(1) : null;
     }
 
     public Map<String, Object> readSnapshot(JobPostingHistory history) {

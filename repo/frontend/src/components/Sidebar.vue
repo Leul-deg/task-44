@@ -34,6 +34,7 @@ const roleMenus = {
   ADMIN: [
     { label: 'Dashboard', path: '/admin/dashboard', icon: DataLine },
     { label: 'Users', path: '/admin/users', icon: UserFilled },
+    { label: 'Job Items', path: '/admin/job-items', icon: Briefcase },
     { label: 'Categories', path: '/admin/categories', icon: CollectionTag },
     { label: 'Locations', path: '/admin/locations', icon: LocationFilled },
     { label: 'Claims', path: '/admin/claims', icon: WarningFilled },

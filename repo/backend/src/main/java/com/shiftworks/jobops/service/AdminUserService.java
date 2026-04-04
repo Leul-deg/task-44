@@ -73,7 +73,7 @@ public class AdminUserService {
     }
 
     @Transactional
-    public AdminUserResponse create(AdminUserCreateRequest request) {
+    public AdminUserResponse create(AdminUserCreateRequest request, AuthenticatedUser actor) {
         log.info("Admin creating user={} role={}", request.username(), request.role());
         if (userRepository.findByUsername(request.username()).isPresent()) {
             throw new BusinessException(HttpStatus.CONFLICT, "username: Already exists");
@@ -95,7 +95,8 @@ public class AdminUserService {
         user.setCreatedAt(Instant.now());
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
-        auditService.log(null, "USER_CREATED", "USER", user.getId(), null, user);
+        auditService.log(actor.id(), "USER_CREATED", "USER", user.getId(), null,
+            java.util.Map.of("username", user.getUsername(), "role", user.getRole(), "status", user.getStatus()));
         return toResponse(user);
     }
 
@@ -145,7 +146,7 @@ public class AdminUserService {
     }
 
     @Transactional
-    public void unlock(Long id) {
+    public void unlock(Long id, AuthenticatedUser actor) {
         User user = userRepository.findById(id)
             .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "user: Not found"));
         if (user.getStatus() != UserStatus.LOCKED) {
@@ -156,10 +157,13 @@ public class AdminUserService {
         user.setLockedUntil(null);
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
+        auditService.log(actor.id(), "USER_UNLOCKED", "USER", id,
+            java.util.Map.of("status", "LOCKED"),
+            java.util.Map.of("status", "ACTIVE"));
     }
 
     @Transactional
-    public ResetPasswordResponse resetPassword(Long id) {
+    public ResetPasswordResponse resetPassword(Long id, AuthenticatedUser actor) {
         User user = userRepository.findById(id)
             .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "user: Not found"));
         String password = generatePassword();
@@ -167,6 +171,8 @@ public class AdminUserService {
         user.setPasswordChangedAt(Instant.ofEpochSecond(0));
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
+        auditService.log(actor.id(), "USER_PASSWORD_RESET", "USER", id, null,
+            java.util.Map.of("targetUserId", id));
         return new ResetPasswordResponse(password);
     }
 

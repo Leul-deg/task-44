@@ -17,7 +17,7 @@ import java.util.Set;
 public class CsrfValidationFilter extends OncePerRequestFilter {
 
     private static final Set<String> SAFE_METHODS = Set.of("GET", "HEAD", "OPTIONS");
-    private static final Set<String> CSRF_EXCLUSIONS = Set.of("/api/auth/login", "/api/auth/register");
+    private static final Set<String> CSRF_EXCLUSIONS = Set.of("/api/auth/login");
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {

@@ -78,7 +78,7 @@ public class AnomalyDetectionService {
 
     private void checkLowApprovalRate() {
         Object[] counts = reviewActionRepository.todayApprovalCounts();
-        if (counts == null || counts[1] == null) return;
+        if (counts == null || counts.length < 2 || counts[0] == null || counts[1] == null) return;
         long approved = ((Number) counts[0]).longValue();
         long total = ((Number) counts[1]).longValue();
         if (total == 0) return;
@@ -86,7 +86,9 @@ public class AnomalyDetectionService {
         double todayRate = (double) approved / total;
 
         List<Double> dailyRates = reviewActionRepository.dailyApprovalStatsLast30Days()
-            .stream().map(row -> {
+            .stream()
+            .filter(row -> row != null && row.length >= 3 && row[1] != null && row[2] != null)
+            .map(row -> {
                 double a = ((Number) row[1]).doubleValue();
                 double t = ((Number) row[2]).doubleValue();
                 return t > 0 ? a / t : 0.0;

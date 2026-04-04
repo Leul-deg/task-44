@@ -93,7 +93,7 @@ public class JobPostingService {
         applyRequest(jobPosting, request, true);
         JobPosting saved = jobPostingRepository.save(jobPosting);
         recordHistory(saved, null, JobStatus.DRAFT, employer, "Draft created");
-        auditService.log(user.id(), "JOB_CREATED", "JOB_POSTING", saved.getId(), null, saved);
+        auditService.log(user.id(), "JOB_CREATED", "JOB_POSTING", saved.getId(), null, buildAuditSnapshot(saved));
         return toResponse(saved, user);
     }
 
@@ -103,6 +103,7 @@ public class JobPostingService {
         if (!EMPLOYER_EDITABLE_STATUSES.contains(jobPosting.getStatus())) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "jobPosting: Only draft or rejected postings can be edited");
         }
+        Map<String, Object> beforeSnapshot = buildAuditSnapshot(jobPosting);
         applyRequest(jobPosting, request, true);
         JobStatus previousStatus = jobPosting.getStatus();
         if (previousStatus == JobStatus.REJECTED) {
@@ -113,7 +114,7 @@ public class JobPostingService {
         }
         jobPosting.setUpdatedAt(Instant.now());
         JobPosting saved = jobPostingRepository.save(jobPosting);
-        auditService.log(user.id(), "JOB_EDITED", "JOB_POSTING", saved.getId(), null, saved);
+        auditService.log(user.id(), "JOB_EDITED", "JOB_POSTING", saved.getId(), beforeSnapshot, buildAuditSnapshot(saved));
         return toResponse(saved, user);
     }
 
@@ -130,7 +131,9 @@ public class JobPostingService {
         jobPosting.setUpdatedAt(Instant.now());
         jobPostingRepository.save(jobPosting);
         recordHistory(jobPosting, JobStatus.DRAFT, JobStatus.PENDING_REVIEW, jobPosting.getEmployer(), "Employer submitted for review");
-        auditService.log(user.id(), "JOB_SUBMITTED", "JOB_POSTING", id, null, null);
+        auditService.log(user.id(), "JOB_SUBMITTED", "JOB_POSTING", id,
+            Map.of("status", "DRAFT"),
+            Map.of("status", "PENDING_REVIEW"));
     }
 
     @Transactional
@@ -148,7 +151,9 @@ public class JobPostingService {
         jobPosting.setUpdatedAt(Instant.now());
         jobPostingRepository.save(jobPosting);
         recordHistory(jobPosting, JobStatus.APPROVED, JobStatus.PUBLISHED, jobPosting.getEmployer(), "Employer published job");
-        auditService.log(user.id(), "JOB_PUBLISHED", "JOB_POSTING", id, null, null);
+        auditService.log(user.id(), "JOB_PUBLISHED", "JOB_POSTING", id,
+            Map.of("status", "APPROVED"),
+            Map.of("status", "PUBLISHED"));
     }
 
     @Transactional
@@ -161,7 +166,9 @@ public class JobPostingService {
         jobPosting.setUpdatedAt(Instant.now());
         jobPostingRepository.save(jobPosting);
         recordHistory(jobPosting, JobStatus.PUBLISHED, JobStatus.UNPUBLISHED, jobPosting.getEmployer(), "Employer unpublished job");
-        auditService.log(user.id(), "JOB_UNPUBLISHED", "JOB_POSTING", id, null, null);
+        auditService.log(user.id(), "JOB_UNPUBLISHED", "JOB_POSTING", id,
+            Map.of("status", "PUBLISHED"),
+            Map.of("status", "UNPUBLISHED"));
     }
 
     @Transactional(readOnly = true)
@@ -412,6 +419,27 @@ public class JobPostingService {
 
     private void recordHistory(JobPosting jobPosting, JobStatus previousStatus, JobStatus newStatus, User actor, String reason) {
         jobHistoryService.record(jobPosting, previousStatus, newStatus, actor, reason);
+    }
+
+    private Map<String, Object> buildAuditSnapshot(JobPosting jobPosting) {
+        Map<String, Object> snapshot = new java.util.LinkedHashMap<>();
+        snapshot.put("title", jobPosting.getTitle());
+        snapshot.put("description", jobPosting.getDescription());
+        snapshot.put("status", jobPosting.getStatus() != null ? jobPosting.getStatus().name() : null);
+        snapshot.put("categoryId", jobPosting.getCategory() != null ? jobPosting.getCategory().getId() : null);
+        snapshot.put("locationId", jobPosting.getLocation() != null ? jobPosting.getLocation().getId() : null);
+        snapshot.put("payType", jobPosting.getPayType() != null ? jobPosting.getPayType().name() : null);
+        snapshot.put("settlementType", jobPosting.getSettlementType() != null ? jobPosting.getSettlementType().name() : null);
+        snapshot.put("payAmount", jobPosting.getPayAmount());
+        snapshot.put("headcount", jobPosting.getHeadcount());
+        snapshot.put("weeklyHours", jobPosting.getWeeklyHours());
+        snapshot.put("contactPhone", jobPosting.getContactPhone());
+        snapshot.put("tags", jobPosting.getTags().stream().map(JobPostingTag::getTagName).toList());
+        snapshot.put("validityStart", jobPosting.getValidityStart());
+        snapshot.put("validityEnd", jobPosting.getValidityEnd());
+        snapshot.put("reviewerNotes", jobPosting.getReviewerNotes());
+        snapshot.put("takedownReason", jobPosting.getTakedownReason());
+        return snapshot;
     }
 
     public JobPostingResponse toResponse(JobPosting jobPosting, AuthenticatedUser user) {

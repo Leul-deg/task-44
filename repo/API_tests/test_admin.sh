@@ -2,6 +2,9 @@
 BASE=http://localhost:8080/api
 PASS=0; FAIL=0
 COOKIE=/tmp/admin_cookie.txt
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/lib/test_env.sh"
+require_admin_password
 
 jp() { python3 -c "import sys,json; print(json.load(sys.stdin).get('$1',''))" 2>/dev/null; }
 
@@ -17,7 +20,7 @@ check() {
 ADMIN_OUT=$(curl -s -c "$COOKIE" \
   -X POST "$BASE/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"Admin@123456789"}')
+  -d "$(admin_login_json)")
 CSRF=$(echo "$ADMIN_OUT" | jp csrfToken)
 
 USERS_CODE=$(curl -s -o /dev/null -w "%{http_code}" -b "$COOKIE" -X GET "$BASE/admin/users")
@@ -32,7 +35,7 @@ check "Create admin user returns 200" "200" "$CREATE_OUTPUT"
 
 ROLE_CODE=$(curl -s -o /dev/null -w "%{http_code}" -b "$COOKIE" -X PUT "$BASE/admin/users/$USER_ID/role" \
   -H "Content-Type: application/json" -H "X-XSRF-TOKEN: $CSRF" \
-  -d '{"role":"REVIEWER","stepUpPassword":"Admin@123456789"}')
+  -d "{\"role\":\"REVIEWER\",\"stepUpPassword\":\"$JOBOPS_ADMIN_PASSWORD\"}")
 check "Change role to REVIEWER returns 200" "200" "$ROLE_CODE"
 
 AUDIT_CODE=$(curl -s -o /dev/null -w "%{http_code}" -b "$COOKIE" -X GET "$BASE/admin/audit-logs")
@@ -40,7 +43,7 @@ check "List audit logs returns 200" "200" "$AUDIT_CODE"
 
 BACKUP_TRIGGER_CODE=$(curl -s -o /dev/null -w "%{http_code}" -b "$COOKIE" -X POST "$BASE/admin/backup/trigger" \
   -H "Content-Type: application/json" -H "X-XSRF-TOKEN: $CSRF" \
-  -d '{"stepUpPassword":"Admin@123456789"}')
+  -d "{\"stepUpPassword\":\"$JOBOPS_ADMIN_PASSWORD\"}")
 check "Trigger backup returns 200" "200" "$BACKUP_TRIGGER_CODE"
 
 BACKUP_LIST_CODE=$(curl -s -o /dev/null -w "%{http_code}" -b "$COOKIE" -X GET "$BASE/admin/backup/list")

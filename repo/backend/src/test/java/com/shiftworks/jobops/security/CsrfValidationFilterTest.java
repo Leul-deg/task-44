@@ -103,4 +103,52 @@ class CsrfValidationFilterTest {
         filter.doFilter(request, response, filterChain);
         verify(filterChain).doFilter(request, response);
     }
+
+    // register is an admin-only state-changing endpoint — CSRF must be enforced
+
+    @Test
+    void registerRequiresValidCsrfWhenAuthenticated() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/register");
+        request.addHeader("X-XSRF-TOKEN", "valid-token");
+        UserSession session = buildSession("valid-token");
+        request.setAttribute(SessionAuthFilter.SESSION_REQUEST_ATTRIBUTE, session);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("admin", null));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void registerWithMissingCsrfReturns403() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/register");
+        UserSession session = buildSession("valid-token");
+        request.setAttribute(SessionAuthFilter.SESSION_REQUEST_ATTRIBUTE, session);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("admin", null));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, filterChain);
+
+        assertEquals(403, response.getStatus());
+        verify(filterChain, never()).doFilter(request, response);
+    }
+
+    @Test
+    void registerWithWrongCsrfReturns403() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/register");
+        request.addHeader("X-XSRF-TOKEN", "tampered-token");
+        UserSession session = buildSession("valid-token");
+        request.setAttribute(SessionAuthFilter.SESSION_REQUEST_ATTRIBUTE, session);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("admin", null));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, filterChain);
+
+        assertEquals(403, response.getStatus());
+        verify(filterChain, never()).doFilter(request, response);
+    }
 }

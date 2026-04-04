@@ -6,9 +6,11 @@ import jobsApi from '@/api/jobs';
 import appealsApi from '@/api/appeals';
 import StepUpVerification from '@/components/common/StepUpVerification.vue';
 import { JOB_STATUS_TYPE } from '@/constants/statuses';
+import { useAuthStore } from '@/stores/auth';
 
 const route = useRoute();
 const router = useRouter();
+const authStore = useAuthStore();
 const job = ref(null);
 const history = ref([]);
 const loading = ref(false);
@@ -19,12 +21,13 @@ const appealReason = ref('');
 const jobId = route.params.id;
 
 const statusType = JOB_STATUS_TYPE;
+const isEmployer = computed(() => authStore.role === 'EMPLOYER');
 
-const canEdit = computed(() => job.value?.status === 'DRAFT');
-const canSubmit = computed(() => job.value?.status === 'DRAFT');
-const canPublish = computed(() => job.value?.status === 'APPROVED');
-const canUnpublish = computed(() => job.value?.status === 'PUBLISHED');
-const canAppeal = computed(() => job.value?.status === 'TAKEN_DOWN');
+const canEdit = computed(() => isEmployer.value && job.value?.status === 'DRAFT');
+const canSubmit = computed(() => isEmployer.value && job.value?.status === 'DRAFT');
+const canPublish = computed(() => isEmployer.value && job.value?.status === 'APPROVED');
+const canUnpublish = computed(() => isEmployer.value && job.value?.status === 'PUBLISHED');
+const canAppeal = computed(() => isEmployer.value && job.value?.status === 'TAKEN_DOWN');
 
 const loadJob = async () => {
   loading.value = true;

@@ -59,6 +59,7 @@ class FileServiceTest {
         ArgumentCaptor<FileAttachment> captor = ArgumentCaptor.forClass(FileAttachment.class);
         verify(fileAttachmentRepository).save(captor.capture());
         assertEquals(FileStatus.ACTIVE, captor.getValue().getStatus());
+        verify(auditService).log(eq(1L), eq("FILE_UPLOAD"), eq("FileAttachment"), any(), isNull(), isNotNull());
     }
 
     @Test

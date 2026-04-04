@@ -50,7 +50,8 @@ public class TicketController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public TicketResponse update(@PathVariable Long id, @Valid @RequestBody TicketUpdateRequest request) {
-        return ticketService.updateTicket(id, request);
+    public TicketResponse update(Authentication authentication, @PathVariable Long id, @Valid @RequestBody TicketUpdateRequest request) {
+        AuthenticatedUser actor = (AuthenticatedUser) authentication.getPrincipal();
+        return ticketService.updateTicket(id, request, actor);
     }
 }

@@ -13,7 +13,6 @@ import com.shiftworks.jobops.enums.UserStatus;
 import com.shiftworks.jobops.exception.BusinessException;
 import com.shiftworks.jobops.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -30,6 +29,7 @@ import java.util.Optional;
 @Slf4j
 public class AuthService {
 
+    private static final String DUMMY_BCRYPT_HASH = "$2b$10$uhDKNM11S8f4yWwTnR7gp.iOQJmEa1DTZXeFE9HJZgigs/4A3DO7y";
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicyService passwordPolicyService;
@@ -44,7 +44,7 @@ public class AuthService {
         log.info("Login attempt for user={}", request.username());
         Optional<User> userOptional = userRepository.findByUsername(request.username());
         if (userOptional.isEmpty()) {
-            passwordEncoder.matches(request.password(), "$2a$10$dummyhashtopreventtimingleak000000000000000000000");
+            passwordEncoder.matches(request.password(), DUMMY_BCRYPT_HASH);
             return LoginResult.failure(false);
         }
         User user = userOptional.get();
@@ -61,8 +61,8 @@ public class AuthService {
         }
         resetFailures(user);
         auditService.log(user.getId(), "USER_LOGIN", "USER", user.getId(), null, null);
-        boolean passwordExpired = user.getPasswordChangedAt() != null && user.getPasswordChangedAt()
-            .isBefore(Instant.now().minus(appProperties.getSecurity().getPassword().getRotationDays(), ChronoUnit.DAYS));
+        boolean passwordExpired = user.getPasswordChangedAt() != null && !user.getPasswordChangedAt()
+            .isAfter(Instant.now().minus(appProperties.getSecurity().getPassword().getRotationDays(), ChronoUnit.DAYS));
         UserSession session = sessionService.createSession(user, httpRequest.getRemoteAddr(), httpRequest.getHeader("User-Agent"));
         return LoginResult.success(new LoginResponse(UserResponse.from(user), session.getCsrfToken(), passwordExpired), session.getId());
     }
@@ -104,7 +104,7 @@ public class AuthService {
     }
 
     @Transactional
-    public UserResponse register(RegisterRequest request) {
+    public UserResponse register(RegisterRequest request, Long actorUserId) {
         log.info("Registration attempt for user={}", request.username());
         if (userRepository.findByUsername(request.username()).isPresent()) {
             throw new BusinessException(HttpStatus.CONFLICT, "Username already taken");
@@ -127,7 +127,7 @@ public class AuthService {
         user.setUpdatedAt(Instant.now());
         user.setCaptchaRequired(false);
         User saved = userRepository.save(user);
-        auditService.log(saved.getId(), "USER_CREATED", "USER", saved.getId(), null, saved);
+        auditService.log(actorUserId, "USER_CREATED", "USER", saved.getId(), null, saved);
         return UserResponse.from(saved);
     }
 
