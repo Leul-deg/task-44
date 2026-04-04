@@ -40,19 +40,27 @@ public class TicketService {
 
     @Transactional(readOnly = true)
     public PageResponse<TicketResponse> listTickets(AuthenticatedUser user, String statusValue, String priorityValue, int page, int size) {
+        TicketStatus parsedStatus = null;
+        if (statusValue != null && !statusValue.isBlank()) {
+            parsedStatus = parseStatus(statusValue);
+        }
+        TicketPriority parsedPriority = null;
+        if (priorityValue != null && !priorityValue.isBlank()) {
+            parsedPriority = parsePriority(priorityValue);
+        }
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        TicketStatus finalParsedStatus = parsedStatus;
+        TicketPriority finalParsedPriority = parsedPriority;
         Specification<Ticket> spec = (root, query, cb) -> {
             Predicate predicate = cb.conjunction();
             if (user.role() != UserRole.ADMIN) {
                 predicate = cb.and(predicate, cb.equal(root.get("reporter").get("id"), user.id()));
             }
-            if (statusValue != null && !statusValue.isBlank()) {
-                TicketStatus status = TicketStatus.valueOf(statusValue.toUpperCase(Locale.ROOT));
-                predicate = cb.and(predicate, cb.equal(root.get("status"), status));
+            if (finalParsedStatus != null) {
+                predicate = cb.and(predicate, cb.equal(root.get("status"), finalParsedStatus));
             }
-            if (priorityValue != null && !priorityValue.isBlank()) {
-                TicketPriority priority = TicketPriority.valueOf(priorityValue.toUpperCase(Locale.ROOT));
-                predicate = cb.and(predicate, cb.equal(root.get("priority"), priority));
+            if (finalParsedPriority != null) {
+                predicate = cb.and(predicate, cb.equal(root.get("priority"), finalParsedPriority));
             }
             return predicate;
         };
@@ -136,5 +144,21 @@ public class TicketService {
             ticket.getCreatedAt(),
             ticket.getUpdatedAt()
         );
+    }
+
+    private TicketStatus parseStatus(String statusValue) {
+        try {
+            return TicketStatus.valueOf(statusValue.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "status: Invalid ticket status");
+        }
+    }
+
+    private TicketPriority parsePriority(String priorityValue) {
+        try {
+            return TicketPriority.valueOf(priorityValue.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "priority: Invalid ticket priority");
+        }
     }
 }

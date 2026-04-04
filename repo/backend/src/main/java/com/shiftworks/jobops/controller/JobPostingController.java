@@ -117,8 +117,8 @@ public class JobPostingController {
     @PostMapping("/{id}/contact-phone")
     @PreAuthorize("hasRole('ADMIN')")
     public Map<String, String> getContactPhone(Authentication authentication,
-                                                @PathVariable Long id,
-                                                @RequestBody StepUpPhoneRequest request) {
+                                                 @PathVariable Long id,
+                                                 @Valid @RequestBody StepUpPhoneRequest request) {
         AuthenticatedUser user = (AuthenticatedUser) authentication.getPrincipal();
         if (!stepUpVerificationService.verify(user.id(), request.stepUpPassword())) {
             throw new BusinessException(HttpStatus.FORBIDDEN, "stepUpPassword: Verification failed");

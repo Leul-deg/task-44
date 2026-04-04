@@ -16,6 +16,7 @@ import com.shiftworks.jobops.enums.TicketPriority;
 import com.shiftworks.jobops.enums.TicketStatus;
 import com.shiftworks.jobops.enums.UserRole;
 import com.shiftworks.jobops.exception.BusinessException;
+import com.shiftworks.jobops.dto.ClaimRequest;
 import com.shiftworks.jobops.repository.AppealRepository;
 import com.shiftworks.jobops.repository.ClaimRepository;
 import com.shiftworks.jobops.repository.FileAttachmentRepository;
@@ -185,6 +186,24 @@ class ObjectLevelAuthorizationTest {
         assertEquals(HttpStatus.FORBIDDEN, ex.getStatus());
     }
 
+    @Test
+    void invalidClaimStatusReturnsBadRequest() {
+        BusinessException ex = assertThrows(BusinessException.class,
+            () -> claimService.listClaims(authA, "NOT_A_STATUS", 0, 10));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
+    }
+
+    @Test
+    void employerCannotCreateClaimForAnotherEmployersJob() {
+        when(jobPostingRepository.findById(10L)).thenReturn(Optional.of(jobOwnedByA()));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+            () -> claimService.createClaim(authB, new ClaimRequest(10L, "Cross-tenant access attempt")));
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatus());
+    }
+
     // =========================================================
     // 4. TicketService — detail
     // =========================================================
@@ -211,6 +230,17 @@ class ObjectLevelAuthorizationTest {
             () -> ticketService.getTicket(authB, 40L));
 
         assertEquals(HttpStatus.FORBIDDEN, ex.getStatus());
+    }
+
+    @Test
+    void invalidTicketFiltersReturnBadRequest() {
+        BusinessException badStatus = assertThrows(BusinessException.class,
+            () -> ticketService.listTickets(authA, "UNKNOWN_STATUS", null, 0, 10));
+        assertEquals(HttpStatus.BAD_REQUEST, badStatus.getStatus());
+
+        BusinessException badPriority = assertThrows(BusinessException.class,
+            () -> ticketService.listTickets(authA, null, "UNKNOWN_PRIORITY", 0, 10));
+        assertEquals(HttpStatus.BAD_REQUEST, badPriority.getStatus());
     }
 
     // =========================================================

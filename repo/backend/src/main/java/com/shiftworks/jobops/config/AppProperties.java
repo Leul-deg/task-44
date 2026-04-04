@@ -16,6 +16,7 @@ public class AppProperties {
     @Data
     public static class Security {
         private String aesSecretKey;
+        private boolean enforceSecretPolicy = true;
         private Password password = new Password();
         private int captchaAfterFailures;
         private int lockAfterFailures;

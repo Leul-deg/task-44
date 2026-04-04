@@ -24,6 +24,7 @@ spring:
 app:
   security:
     aes-secret-key: ${AES_SECRET_KEY}
+    enforce-secret-policy: true
     password:
       min-length: 12
       rotation-days: 90

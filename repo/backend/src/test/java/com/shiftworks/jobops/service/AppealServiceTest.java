@@ -170,4 +170,12 @@ class AppealServiceTest {
         var ex = assertThrows(BusinessException.class, () -> appealService.processAppeal(100L, request, reviewerUser));
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
     }
+
+    @Test
+    void listAppealsWithInvalidStatusReturnsBadRequest() {
+        BusinessException ex = assertThrows(BusinessException.class,
+            () -> appealService.listAppeals(reviewerUser, "INVALID_STATUS", 0, 10));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
+    }
 }

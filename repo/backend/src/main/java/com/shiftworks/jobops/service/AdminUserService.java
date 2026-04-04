@@ -43,14 +43,24 @@ public class AdminUserService {
 
     @Transactional(readOnly = true)
     public PageResponse<AdminUserResponse> listUsers(String role, String status, String search, int page, int size) {
+        UserRole parsedRole = null;
+        if (role != null && !role.isBlank()) {
+            parsedRole = parseRole(role);
+        }
+        UserStatus parsedStatus = null;
+        if (status != null && !status.isBlank()) {
+            parsedStatus = parseStatus(status);
+        }
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        UserRole finalParsedRole = parsedRole;
+        UserStatus finalParsedStatus = parsedStatus;
         Page<User> result = userRepository.findAll((root, query, cb) -> {
             var predicate = cb.conjunction();
-            if (role != null && !role.isBlank()) {
-                predicate = cb.and(predicate, cb.equal(root.get("role"), UserRole.valueOf(role.toUpperCase(Locale.ROOT))));
+            if (finalParsedRole != null) {
+                predicate = cb.and(predicate, cb.equal(root.get("role"), finalParsedRole));
             }
-            if (status != null && !status.isBlank()) {
-                predicate = cb.and(predicate, cb.equal(root.get("status"), UserStatus.valueOf(status.toUpperCase(Locale.ROOT))));
+            if (finalParsedStatus != null) {
+                predicate = cb.and(predicate, cb.equal(root.get("status"), finalParsedStatus));
             }
             if (search != null && !search.isBlank()) {
                 String like = "%" + search.toLowerCase(Locale.ROOT) + "%";
@@ -200,5 +210,21 @@ public class AdminUserService {
             user.getFailedLoginAttempts(),
             user.getLockedUntil()
         );
+    }
+
+    private UserRole parseRole(String roleValue) {
+        try {
+            return UserRole.valueOf(roleValue.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "role: Invalid user role");
+        }
+    }
+
+    private UserStatus parseStatus(String statusValue) {
+        try {
+            return UserStatus.valueOf(statusValue.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "status: Invalid user status");
+        }
     }
 }

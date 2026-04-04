@@ -1,5 +1,6 @@
 package com.shiftworks.jobops.runner;
 
+import com.shiftworks.jobops.config.AppProperties;
 import com.shiftworks.jobops.entity.User;
 import com.shiftworks.jobops.enums.UserRole;
 import com.shiftworks.jobops.enums.UserStatus;
@@ -21,6 +22,7 @@ public class DataSeeder implements ApplicationRunner {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AppProperties appProperties;
     @Value("${BOOTSTRAP_ADMIN_PASSWORD:}")
     private String bootstrapAdminPassword;
 
@@ -30,6 +32,10 @@ public class DataSeeder implements ApplicationRunner {
             if (bootstrapAdminPassword == null || bootstrapAdminPassword.isBlank()) {
                 log.warn("Skipping admin bootstrap because BOOTSTRAP_ADMIN_PASSWORD is not set");
                 return;
+            }
+            int minLength = Math.max(12, appProperties.getSecurity().getPassword().getMinLength());
+            if (bootstrapAdminPassword.length() < minLength) {
+                throw new IllegalStateException("BOOTSTRAP_ADMIN_PASSWORD is too short; minimum length is " + minLength);
             }
             User admin = new User();
             admin.setUsername("admin");
