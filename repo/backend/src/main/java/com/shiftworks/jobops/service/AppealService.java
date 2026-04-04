@@ -59,15 +59,19 @@ public class AppealService {
         } else {
             effectiveStatus = statusValue;
         }
+        AppealStatus parsedStatus = null;
+        if (effectiveStatus != null && !effectiveStatus.isBlank()) {
+            parsedStatus = parseStatus(effectiveStatus);
+        }
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "createdAt"));
+        AppealStatus finalParsedStatus = parsedStatus;
         Specification<Appeal> spec = (root, query, cb) -> {
             Predicate predicate = cb.conjunction();
             if (user.role() == UserRole.EMPLOYER) {
                 predicate = cb.and(predicate, cb.equal(root.get("employer").get("id"), user.id()));
             }
-            if (effectiveStatus != null && !effectiveStatus.isBlank()) {
-                AppealStatus status = AppealStatus.valueOf(effectiveStatus.toUpperCase(Locale.ROOT));
-                predicate = cb.and(predicate, cb.equal(root.get("status"), status));
+            if (finalParsedStatus != null) {
+                predicate = cb.and(predicate, cb.equal(root.get("status"), finalParsedStatus));
             }
             return predicate;
         };
@@ -188,5 +192,13 @@ public class AppealService {
             appeal.getReviewerRationale(),
             appeal.getUpdatedAt()
         );
+    }
+
+    private AppealStatus parseStatus(String statusValue) {
+        try {
+            return AppealStatus.valueOf(statusValue.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "status: Invalid appeal status");
+        }
     }
 }

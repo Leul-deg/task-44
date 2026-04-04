@@ -1,4 +1,6 @@
 package com.shiftworks.jobops.dto;
 
-public record StepUpPhoneRequest(String stepUpPassword) {
+import jakarta.validation.constraints.NotBlank;
+
+public record StepUpPhoneRequest(@NotBlank String stepUpPassword) {
 }

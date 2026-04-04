@@ -45,15 +45,19 @@ public class ClaimService {
         if (user.role() != UserRole.ADMIN && user.role() != UserRole.EMPLOYER) {
             throw new BusinessException(HttpStatus.FORBIDDEN, "claim: Access denied");
         }
+        ClaimStatus parsedStatus = null;
+        if (statusValue != null && !statusValue.isBlank()) {
+            parsedStatus = parseStatus(statusValue);
+        }
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        ClaimStatus finalParsedStatus = parsedStatus;
         Specification<Claim> spec = (root, query, cb) -> {
             Predicate predicate = cb.conjunction();
             if (user.role() == UserRole.EMPLOYER) {
                 predicate = cb.and(predicate, cb.equal(root.get("claimant").get("id"), user.id()));
             }
-            if (statusValue != null && !statusValue.isBlank()) {
-                ClaimStatus status = ClaimStatus.valueOf(statusValue.toUpperCase(Locale.ROOT));
-                predicate = cb.and(predicate, cb.equal(root.get("status"), status));
+            if (finalParsedStatus != null) {
+                predicate = cb.and(predicate, cb.equal(root.get("status"), finalParsedStatus));
             }
             return predicate;
         };
@@ -70,6 +74,9 @@ public class ClaimService {
         }
         JobPosting jobPosting = jobPostingRepository.findById(request.jobPostingId())
             .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "jobPosting: Not found"));
+        if (jobPosting.getEmployer() == null || !jobPosting.getEmployer().getId().equals(user.id())) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "claim: Access denied for jobPosting");
+        }
         User claimant = userRepository.findById(user.id())
             .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "user: Not found"));
         Claim claim = new Claim();
@@ -140,6 +147,14 @@ public class ClaimService {
                 }
             }
             default -> throw new BusinessException(HttpStatus.BAD_REQUEST, "status: Cannot transition from " + current);
+        }
+    }
+
+    private ClaimStatus parseStatus(String statusValue) {
+        try {
+            return ClaimStatus.valueOf(statusValue.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "status: Invalid claim status");
         }
     }
 

@@ -87,4 +87,17 @@ class JobPostingSecurityTest {
                     "Reviewer creating job should be rejected, got " + status);
             });
     }
+
+    @Test
+    void contactPhoneRequestRejectsBlankStepUpPassword() throws Exception {
+        UserSession session = buildSession(UserRole.ADMIN);
+        when(sessionService.findValidSession(anyString())).thenReturn(Optional.of(session));
+
+        mockMvc.perform(post("/api/jobs/5/contact-phone")
+                .contentType("application/json")
+                .content("{\"stepUpPassword\":\"\"}")
+                .cookie(new Cookie(SessionService.SESSION_COOKIE, "test-session-token"))
+                .header("X-XSRF-TOKEN", "test-csrf"))
+            .andExpect(status().isBadRequest());
+    }
 }

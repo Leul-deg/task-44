@@ -66,19 +66,14 @@ public class ReviewService {
     @Transactional(readOnly = true)
     public JobPostingResponse getJob(Long id, AuthenticatedUser reviewer) {
         ensureReviewer(reviewer);
-        JobPosting jobPosting = jobPostingRepository.findById(id)
-            .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "jobPosting: Not found"));
-        if (jobPosting.getStatus() != JobStatus.PENDING_REVIEW && jobPosting.getStatus() != JobStatus.PUBLISHED) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST, "jobPosting: Not available for review");
-        }
+        JobPosting jobPosting = loadReviewVisibleJob(id);
         return jobPostingService.toResponse(jobPosting, reviewer);
     }
 
     @Transactional(readOnly = true)
     public Map<String, FieldDiff> diff(Long id, AuthenticatedUser reviewer) {
         ensureReviewer(reviewer);
-        JobPosting jobPosting = jobPostingRepository.findById(id)
-            .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "jobPosting: Not found"));
+        JobPosting jobPosting = loadReviewVisibleJob(id);
         // For first submissions there is no prior version to diff against.
         // For resubmissions after rejection the second-most-recent PENDING_REVIEW entry holds
         // the snapshot that the reviewer saw last time (the "old" version).
@@ -159,9 +154,19 @@ public class ReviewService {
     @Transactional(readOnly = true)
     public List<ReviewActionResponse> actionsForJob(Long jobId, AuthenticatedUser reviewer) {
         ensureReviewer(reviewer);
+        loadReviewVisibleJob(jobId);
         return reviewActionRepository.findByJobPosting_IdOrderByCreatedAtDesc(jobId).stream()
             .map(this::toActionResponse)
             .toList();
+    }
+
+    private JobPosting loadReviewVisibleJob(Long id) {
+        JobPosting jobPosting = jobPostingRepository.findById(id)
+            .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "jobPosting: Not found"));
+        if (jobPosting.getStatus() != JobStatus.PENDING_REVIEW && jobPosting.getStatus() != JobStatus.PUBLISHED) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "jobPosting: Not available for review");
+        }
+        return jobPosting;
     }
 
     @Transactional(readOnly = true)

@@ -263,4 +263,26 @@ class ReviewServiceTest {
 
         assertNull(result, "Identical resubmission should produce no diff (null)");
     }
+
+    @Test
+    void diff_disallowedStatus_throwsBadRequest() {
+        JobPosting job = createJob(JobStatus.DRAFT);
+        when(jobPostingRepository.findById(job.getId())).thenReturn(Optional.of(job));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+            () -> reviewService.diff(job.getId(), reviewerUser));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
+    }
+
+    @Test
+    void actions_disallowedStatus_throwsBadRequest() {
+        JobPosting job = createJob(JobStatus.REJECTED);
+        when(jobPostingRepository.findById(job.getId())).thenReturn(Optional.of(job));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+            () -> reviewService.actionsForJob(job.getId(), reviewerUser));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
+    }
 }

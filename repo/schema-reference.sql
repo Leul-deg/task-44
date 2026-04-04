@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS user_sessions (
     last_active_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     absolute_expiry TIMESTAMP NOT NULL,
     is_valid BOOLEAN NOT NULL DEFAULT TRUE,
+    csrf_token VARCHAR(128) NOT NULL,
     ip_address VARCHAR(45),
     user_agent VARCHAR(512),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -146,6 +147,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     description TEXT NOT NULL,
     status ENUM('OPEN','IN_PROGRESS','RESOLVED','CLOSED') NOT NULL DEFAULT 'OPEN',
     priority ENUM('LOW','MEDIUM','HIGH','CRITICAL') NOT NULL DEFAULT 'MEDIUM',
+    resolution TEXT,
     assigned_to BIGINT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -214,6 +216,7 @@ CREATE TABLE IF NOT EXISTS report_exports (
     user_id BIGINT NOT NULL,
     dashboard_config_id BIGINT,
     file_path VARCHAR(500) NOT NULL,
+    file_size BIGINT DEFAULT 0,
     is_masked BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)

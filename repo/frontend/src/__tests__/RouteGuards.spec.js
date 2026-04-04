@@ -5,6 +5,12 @@ vi.mock('@/stores/auth', () => ({
   useAuthStore: vi.fn()
 }));
 
+vi.mock('vue-echarts', () => ({
+  default: {
+    name: 'VChart'
+  }
+}));
+
 describe('Router guard role restrictions', () => {
   beforeEach(() => {
     vi.resetModules();

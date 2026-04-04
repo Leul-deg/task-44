@@ -147,4 +147,20 @@ class AdminUserServiceTest {
             isNotNull()
         );
     }
+
+    @Test
+    void invalidRoleFilterReturnsBadRequest() {
+        BusinessException ex = assertThrows(BusinessException.class,
+            () -> adminUserService.listUsers("NOT_A_ROLE", null, null, 0, 10));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
+    }
+
+    @Test
+    void invalidStatusFilterReturnsBadRequest() {
+        BusinessException ex = assertThrows(BusinessException.class,
+            () -> adminUserService.listUsers(null, "NOT_A_STATUS", null, 0, 10));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
+    }
 }
