@@ -45,8 +45,9 @@ public class AdminUserController {
     }
 
     @PostMapping
-    public AdminUserResponse create(@Valid @RequestBody AdminUserCreateRequest request) {
-        return adminUserService.create(request);
+    public AdminUserResponse create(@Valid @RequestBody AdminUserCreateRequest request, Authentication authentication) {
+        AuthenticatedUser actor = (AuthenticatedUser) authentication.getPrincipal();
+        return adminUserService.create(request, actor);
     }
 
     @PutMapping("/{id}")
@@ -62,12 +63,14 @@ public class AdminUserController {
     }
 
     @PutMapping("/{id}/unlock")
-    public void unlock(@PathVariable Long id) {
-        adminUserService.unlock(id);
+    public void unlock(@PathVariable Long id, Authentication authentication) {
+        AuthenticatedUser actor = (AuthenticatedUser) authentication.getPrincipal();
+        adminUserService.unlock(id, actor);
     }
 
     @PutMapping("/{id}/reset-password")
-    public ResetPasswordResponse resetPassword(@PathVariable Long id) {
-        return adminUserService.resetPassword(id);
+    public ResetPasswordResponse resetPassword(@PathVariable Long id, Authentication authentication) {
+        AuthenticatedUser actor = (AuthenticatedUser) authentication.getPrincipal();
+        return adminUserService.resetPassword(id, actor);
     }
 }

@@ -79,11 +79,14 @@ public class ReviewService {
         ensureReviewer(reviewer);
         JobPosting jobPosting = jobPostingRepository.findById(id)
             .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "jobPosting: Not found"));
-        JobPostingHistory history = jobHistoryService.findLatestSnapshot(jobPosting.getId());
-        if (history == null) {
+        // For first submissions there is no prior version to diff against.
+        // For resubmissions after rejection the second-most-recent PENDING_REVIEW entry holds
+        // the snapshot that the reviewer saw last time (the "old" version).
+        JobPostingHistory previousSubmission = jobHistoryService.findPreviousSubmissionSnapshot(jobPosting.getId());
+        if (previousSubmission == null) {
             return null;
         }
-        Map<String, Object> oldValues = jobHistoryService.readSnapshot(history);
+        Map<String, Object> oldValues = jobHistoryService.readSnapshot(previousSubmission);
         Map<String, Object> currentValues = buildFieldMap(jobPosting);
         Map<String, FieldDiff> diffs = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : oldValues.entrySet()) {
@@ -107,7 +110,9 @@ public class ReviewService {
         jobPostingRepository.save(job);
         saveReviewAction(job, reviewer, ReviewActionType.APPROVE, request.rationale());
         jobHistoryService.record(job, JobStatus.PENDING_REVIEW, JobStatus.APPROVED, getReviewerUser(reviewer), request.rationale());
-        auditService.log(reviewer.id(), "JOB_APPROVED", "JOB_POSTING", id, null, null);
+        auditService.log(reviewer.id(), "JOB_APPROVED", "JOB_POSTING", id,
+            Map.of("status", "PENDING_REVIEW"),
+            Map.of("status", "APPROVED", "rationale", request.rationale()));
     }
 
     @Transactional
@@ -121,7 +126,15 @@ public class ReviewService {
         jobPostingRepository.save(job);
         saveReviewAction(job, reviewer, ReviewActionType.REJECT, request.rationale());
         jobHistoryService.record(job, JobStatus.PENDING_REVIEW, JobStatus.REJECTED, getReviewerUser(reviewer), request.rationale());
-        auditService.log(reviewer.id(), "JOB_REJECTED", "JOB_POSTING", id, null, null);
+        Map<String, Object> rejectAfter = new java.util.HashMap<>();
+        rejectAfter.put("status", "REJECTED");
+        rejectAfter.put("rationale", request.rationale());
+        if (request.reviewerNotes() != null) {
+            rejectAfter.put("reviewerNotes", request.reviewerNotes());
+        }
+        auditService.log(reviewer.id(), "JOB_REJECTED", "JOB_POSTING", id,
+            Map.of("status", "PENDING_REVIEW"),
+            rejectAfter);
     }
 
     @Transactional
@@ -138,7 +151,9 @@ public class ReviewService {
         jobPostingRepository.save(job);
         saveReviewAction(job, reviewer, ReviewActionType.TAKEDOWN, request.rationale());
         jobHistoryService.record(job, JobStatus.PUBLISHED, JobStatus.TAKEN_DOWN, getReviewerUser(reviewer), request.rationale());
-        auditService.log(reviewer.id(), "JOB_TAKEN_DOWN", "JOB_POSTING", id, null, null);
+        auditService.log(reviewer.id(), "JOB_TAKEN_DOWN", "JOB_POSTING", id,
+            Map.of("status", "PUBLISHED"),
+            Map.of("status", "TAKEN_DOWN", "rationale", request.rationale()));
     }
 
     @Transactional(readOnly = true)

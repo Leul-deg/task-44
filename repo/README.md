@@ -18,6 +18,9 @@ A full-stack offline-capable platform for managing part-time job postings with e
 
 ## Quick Start (Docker — recommended)
 ```bash
+cp .env.example .env
+# edit .env and set strong values for MYSQL_ROOT_PASSWORD, DB_PASSWORD,
+# AES_SECRET_KEY, and BOOTSTRAP_ADMIN_PASSWORD
 docker compose up --build
 ```
 Wait 30-60 seconds for all services to start. Verify with:
@@ -28,10 +31,10 @@ docker compose ps
 # Health check — login should return HTTP 200 with user JSON
 curl -s -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"Admin@123456789"}'
+  -d "{\"username\":\"admin\",\"password\":\"$BOOTSTRAP_ADMIN_PASSWORD\"}"
 
 # Seed verification — should show 1 admin user
-docker compose exec mysql mysql -ushiftworks -pShiftW0rks2026 shiftworks \
+docker compose exec mysql mysql -ushiftworks -p"$DB_PASSWORD" shiftworks \
   -e "SELECT username, role FROM users;"
 ```
 
@@ -41,17 +44,17 @@ docker compose exec mysql mysql -ushiftworks -pShiftW0rks2026 shiftworks \
 - Java 17 (JDK)
 - Maven 3.9+
 - Node.js 18+ and npm
-- MySQL 8.0
+- MySQL 8.0 (including `mysql` and `mysqldump` CLI tools — required for backup and restore)
 
 ### 1. Database
 ```bash
 # Start MySQL and create the database
 mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS shiftworks;"
-mysql -u root -p -e "CREATE USER IF NOT EXISTS 'shiftworks'@'localhost' IDENTIFIED BY 'ShiftW0rks2026';"
+mysql -u root -p -e "CREATE USER IF NOT EXISTS 'shiftworks'@'localhost' IDENTIFIED BY '$DB_PASSWORD';"
 mysql -u root -p -e "GRANT ALL PRIVILEGES ON shiftworks.* TO 'shiftworks'@'localhost'; FLUSH PRIVILEGES;"
 
-# Load schema and seed data
-mysql -u shiftworks -pShiftW0rks2026 shiftworks < init-db/01-schema.sql
+# Load schema and reference data
+mysql -u shiftworks -p"$DB_PASSWORD" shiftworks < init-db/01-schema.sql
 ```
 
 ### 2. Backend
@@ -61,13 +64,14 @@ cd backend
 # Set required environment variables
 export SPRING_DATASOURCE_URL="jdbc:mysql://localhost:3306/shiftworks?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
 export SPRING_DATASOURCE_USERNAME=shiftworks
-export SPRING_DATASOURCE_PASSWORD=ShiftW0rks2026
-export AES_SECRET_KEY=0123456789abcdef0123456789abcdef
-export FILE_STORAGE_PATH=./uploads
-export BACKUP_PATH=./backups
+export SPRING_DATASOURCE_PASSWORD="$DB_PASSWORD"
+export AES_SECRET_KEY="$AES_SECRET_KEY"
+export BOOTSTRAP_ADMIN_PASSWORD="$BOOTSTRAP_ADMIN_PASSWORD"
+export FILE_STORAGE_PATH=./uploads   # where uploaded files are stored
+export BACKUP_PATH=./backups         # where mysqldump backup files are written
 
 mkdir -p uploads backups
-mvn -B clean package -DskipTests
+./mvnw -B clean package -DskipTests
 java -jar target/*.jar
 # Backend starts on http://localhost:8080
 ```
@@ -89,13 +93,12 @@ npm run dev
 | Backend  | http://localhost:8080  |
 | MySQL    | localhost:3307         |
 
-## Default Credentials
+## Bootstrap Admin
 
-| Username | Password        | Role  |
-|----------|-----------------|-------|
-| admin    | Admin@123456789 | ADMIN |
-
-Users are provisioned exclusively through the Admin console (Admin → Users).
+- Username: `admin`
+- Password: value of `BOOTSTRAP_ADMIN_PASSWORD`
+- This bootstrap credential is supplied from your local environment and is not committed in the repository.
+- Additional users are provisioned through the Admin console (Admin → Users).
 
 ## User Roles
 
@@ -107,7 +110,7 @@ Users are provisioned exclusively through the Admin console (Admin → Users).
 
 ## Running Tests
 - All tests: `./run_tests.sh`
-- Unit tests only: `cd backend && mvn test`
+- Backend tests only: `cd backend && ./mvnw test`
 - Individual API test: `./API_tests/test_auth.sh`
 
 ## Verified Runtime Evidence
@@ -133,7 +136,7 @@ admin       ADMIN
 ```
 
 ## Verification Steps
-1. Login as admin (`admin` / `Admin@123456789`)
+1. Login as admin (`admin` / your `BOOTSTRAP_ADMIN_PASSWORD`)
 2. Create employer and reviewer users via Admin → Users
 3. Login as employer, create a job posting
 4. Submit the posting for review
@@ -151,7 +154,7 @@ admin       ADMIN
 ├── API_tests/          # curl-based API test scripts
 ├── schema-reference.sql# Full schema reference
 ├── docker-compose.yml
-├── .env                # Environment variables (AES key, DB password)
+├── .env.example        # Template for local-only secrets/config
 ├── run_tests.sh
 └── README.md
 ```
@@ -160,10 +163,13 @@ admin       ADMIN
 
 | Variable | Purpose | Default | Production Guidance |
 |----------|---------|---------|---------------------|
-| `AES_SECRET_KEY` | Column-level AES-256-GCM encryption key | `ThisIsA32ByteKeyForAES256Enc!!` (dev only) | Replace with a securely generated 32-byte key via Docker secrets or `.env` excluded from version control |
+| `AES_SECRET_KEY` | Column-level AES-256-GCM encryption key | none committed | Supply via local `.env` or environment and replace with a securely generated 32-byte key |
+| `DB_PASSWORD` | MySQL application user password | none committed | Supply via local `.env`; do not commit it |
+| `MYSQL_ROOT_PASSWORD` | MySQL root password for local Docker setup | none committed | Supply via local `.env`; do not commit it |
+| `BOOTSTRAP_ADMIN_PASSWORD` | Initial admin login password used by bootstrap seeding | none committed | Supply via local `.env`; rotate after first login if used beyond local testing |
 | `COOKIE_SECURE` | Sets `Secure` flag on session cookies | Not set (cookies sent over HTTP) | Set to `true` in any HTTPS deployment to prevent session token leakage over unencrypted connections |
 
-> **Important**: The default `AES_SECRET_KEY` in `docker-compose.yml` is for development/demo only. Never use it in production.
+> **Important**: No runtime secrets are committed. Create a local `.env` from `.env.example` before running Docker or local startup commands.
 
 ## Key Features
 - **Job Lifecycle**: Full status machine (Draft → Review → Approve → Publish)

@@ -4,6 +4,12 @@ set -o pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
+if [ -f .env ]; then
+  set -a
+  . ./.env
+  set +a
+fi
+
 echo "======================================"
 echo "  ShiftWorks JobOps — Test Runner"
 echo "======================================"

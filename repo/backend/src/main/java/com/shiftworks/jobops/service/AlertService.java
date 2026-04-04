@@ -23,6 +23,7 @@ public class AlertService {
 
     private final AlertRepository alertRepository;
     private final UserRepository userRepository;
+    private final AuditService auditService;
 
     public Page<AlertPageResponse> list(AlertSeverity severity, Boolean isRead, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
@@ -47,8 +48,12 @@ public class AlertService {
     public void markRead(Long id, AuthenticatedUser user) {
         Alert alert = alertRepository.findById(id)
             .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "alert: Not found"));
+        boolean wasRead = alert.isRead();
         alert.setRead(true);
         alertRepository.save(alert);
+        auditService.log(user.id(), "ALERT_READ", "ALERT", id,
+            java.util.Map.of("read", wasRead),
+            java.util.Map.of("read", true));
     }
 
     @Transactional
@@ -57,9 +62,13 @@ public class AlertService {
             .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "alert: Not found"));
         User ackUser = userRepository.findById(user.id())
             .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "user: Not found"));
+        boolean wasRead = alert.isRead();
         alert.setAcknowledgedBy(ackUser);
         alert.setRead(true);
         alertRepository.save(alert);
+        auditService.log(user.id(), "ALERT_ACKNOWLEDGED", "ALERT", id,
+            java.util.Map.of("read", wasRead),
+            java.util.Map.of("read", true, "acknowledgedBy", ackUser.getUsername()));
     }
 
     private AlertPageResponse toDto(Alert alert) {

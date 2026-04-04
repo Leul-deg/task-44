@@ -58,7 +58,7 @@ public class SessionAuthFilter extends OncePerRequestFilter {
                     establishSecurityContext(request, session);
                     if (session.getUser().getPasswordChangedAt() != null) {
                         long daysSinceChange = java.time.Duration.between(session.getUser().getPasswordChangedAt(), java.time.Instant.now()).toDays();
-                        if (daysSinceChange > appProperties.getSecurity().getPassword().getRotationDays()) {
+                        if (daysSinceChange >= appProperties.getSecurity().getPassword().getRotationDays()) {
                             String requestPath = request.getRequestURI();
                             if (!requestPath.equals("/api/auth/change-password") && !requestPath.equals("/api/auth/me") && !requestPath.equals("/api/auth/logout")) {
                                 response.setStatus(403);

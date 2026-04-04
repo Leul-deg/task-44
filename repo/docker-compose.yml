@@ -2,10 +2,10 @@ services:
   mysql:
     image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
       MYSQL_DATABASE: shiftworks
       MYSQL_USER: shiftworks
-      MYSQL_PASSWORD: ${DB_PASSWORD:-ShiftW0rks2026}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
     ports:
       - "3307:3306"
     volumes:
@@ -24,16 +24,12 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-    env_file:
-      - path: .env
-        required: false
-      - path: .env.example
-        required: false
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/shiftworks?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: shiftworks
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-ShiftW0rks2026}
-      AES_SECRET_KEY: ${AES_SECRET_KEY:-0123456789abcdef0123456789abcdef}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      AES_SECRET_KEY: ${AES_SECRET_KEY:?Set AES_SECRET_KEY in .env}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:?Set BOOTSTRAP_ADMIN_PASSWORD in .env}
       FILE_STORAGE_PATH: /app/uploads
       BACKUP_PATH: /app/backups
     volumes:

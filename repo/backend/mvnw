@@ -1,0 +1,60 @@
+#!/bin/sh
+set -eu
+
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
+PROPS_FILE="$SCRIPT_DIR/.mvn/wrapper/maven-wrapper.properties"
+
+if [ ! -f "$PROPS_FILE" ]; then
+  echo "Missing Maven wrapper properties: $PROPS_FILE" >&2
+  exit 1
+fi
+
+DISTRIBUTION_URL="$(sed -n 's/^distributionUrl=//p' "$PROPS_FILE" | tail -n 1)"
+if [ -z "$DISTRIBUTION_URL" ]; then
+  echo "distributionUrl is missing in $PROPS_FILE" >&2
+  exit 1
+fi
+
+MAVEN_USER_HOME="${MAVEN_USER_HOME:-$HOME/.m2}"
+ARCHIVE_NAME="${DISTRIBUTION_URL##*/}"
+DIST_NAME="${ARCHIVE_NAME%.zip}"
+DIST_DIR="$MAVEN_USER_HOME/wrapper/dists/$DIST_NAME"
+MAVEN_HOME="$DIST_DIR/$DIST_NAME"
+MVN_BIN="$MAVEN_HOME/bin/mvn"
+
+if [ ! -x "$MVN_BIN" ]; then
+  if ! command -v curl >/dev/null 2>&1; then
+    echo "curl is required to download Maven in $0" >&2
+    exit 1
+  fi
+  if ! command -v unzip >/dev/null 2>&1; then
+    echo "unzip is required to extract Maven in $0" >&2
+    exit 1
+  fi
+
+  TMP_DIR="$(mktemp -d)"
+  trap 'rm -rf "$TMP_DIR"' EXIT INT TERM HUP
+  ARCHIVE_PATH="$TMP_DIR/$ARCHIVE_NAME"
+
+  mkdir -p "$DIST_DIR"
+  curl -fsSL "$DISTRIBUTION_URL" -o "$ARCHIVE_PATH"
+  unzip -q "$ARCHIVE_PATH" -d "$TMP_DIR"
+
+  EXTRACTED_DIR=""
+  for dir in "$TMP_DIR"/*; do
+    if [ -d "$dir" ] && [ -x "$dir/bin/mvn" ]; then
+      EXTRACTED_DIR="$dir"
+      break
+    fi
+  done
+
+  if [ -z "$EXTRACTED_DIR" ]; then
+    echo "Could not locate extracted Maven distribution" >&2
+    exit 1
+  fi
+
+  rm -rf "$MAVEN_HOME"
+  mv "$EXTRACTED_DIR" "$MAVEN_HOME"
+fi
+
+exec "$MVN_BIN" "$@"

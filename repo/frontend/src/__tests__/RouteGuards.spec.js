@@ -49,10 +49,10 @@ describe('Router guard role restrictions', () => {
     });
 
     const { default: router } = await import('@/router/index.js');
-    await router.push('/admin/users');
+    await router.push('/admin/job-items');
     await router.isReady();
 
-    expect(router.currentRoute.value.path).toBe('/admin/users');
+    expect(router.currentRoute.value.path).toBe('/admin/job-items');
   });
 
   it('redirects logged-in user from /login to their dashboard', async () => {

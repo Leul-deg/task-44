@@ -246,6 +246,18 @@ CREATE TABLE IF NOT EXISTS backup_records (
     status ENUM('COMPLETED','FAILED','EXPIRED') NOT NULL DEFAULT 'COMPLETED'
 );
 
+DROP TRIGGER IF EXISTS prevent_audit_logs_update;
+CREATE TRIGGER prevent_audit_logs_update
+BEFORE UPDATE ON audit_logs
+FOR EACH ROW
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'audit_logs are immutable';
+
+DROP TRIGGER IF EXISTS prevent_audit_logs_delete;
+CREATE TRIGGER prevent_audit_logs_delete
+BEFORE DELETE ON audit_logs
+FOR EACH ROW
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'audit_logs are immutable';
+
 -- Seed: US locations
 INSERT IGNORE INTO locations (state, city) VALUES
 ('California','Los Angeles'),('California','San Francisco'),('California','San Diego'),

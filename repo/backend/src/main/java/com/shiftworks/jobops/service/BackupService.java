@@ -48,6 +48,10 @@ public class BackupService {
     private String dbUsername;
     @Value("${spring.datasource.password}")
     private String dbPassword;
+    @Value("${app.backup.mysqldump-command:mysqldump}")
+    private String mysqldumpCommand = "mysqldump";
+    @Value("${app.backup.mysql-command:mysql}")
+    private String mysqlCommand = "mysql";
 
     private static final int GCM_TAG_BITS = 128;
     private static final int IV_BYTES = 12;
@@ -82,7 +86,7 @@ public class BackupService {
             String dbName = dbInfo[2];
 
             ProcessBuilder pb = new ProcessBuilder(
-                "mysqldump", "-h", host, "-P", port, "-u", dbUsername,
+                mysqldumpCommand, "-h", host, "-P", port, "-u", dbUsername,
                 "--single-transaction", dbName
             );
             pb.environment().put("MYSQL_PWD", dbPassword);
@@ -151,7 +155,7 @@ public class BackupService {
             SecretKeySpec keySpec = getKeySpec();
 
             ProcessBuilder pb = new ProcessBuilder(
-                "mysql", "-h", host, "-P", port, "-u", dbUsername,
+                mysqlCommand, "-h", host, "-P", port, "-u", dbUsername,
                 dbName
             );
             pb.environment().put("MYSQL_PWD", dbPassword);

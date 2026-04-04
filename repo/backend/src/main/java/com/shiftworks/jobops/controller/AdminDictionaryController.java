@@ -4,10 +4,12 @@ import com.shiftworks.jobops.dto.AdminCategoryRequest;
 import com.shiftworks.jobops.dto.AdminCategoryResponse;
 import com.shiftworks.jobops.dto.AdminLocationRequest;
 import com.shiftworks.jobops.dto.AdminLocationResponse;
+import com.shiftworks.jobops.security.AuthenticatedUser;
 import com.shiftworks.jobops.service.AdminDictionaryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,18 +36,21 @@ public class AdminDictionaryController {
     }
 
     @PostMapping("/categories")
-    public AdminCategoryResponse createCategory(@Valid @RequestBody AdminCategoryRequest request) {
-        return adminDictionaryService.createCategory(request);
+    public AdminCategoryResponse createCategory(@Valid @RequestBody AdminCategoryRequest request, Authentication authentication) {
+        AuthenticatedUser actor = (AuthenticatedUser) authentication.getPrincipal();
+        return adminDictionaryService.createCategory(request, actor);
     }
 
     @PutMapping("/categories/{id}")
-    public AdminCategoryResponse updateCategory(@PathVariable Long id, @Valid @RequestBody AdminCategoryRequest request) {
-        return adminDictionaryService.updateCategory(id, request);
+    public AdminCategoryResponse updateCategory(@PathVariable Long id, @Valid @RequestBody AdminCategoryRequest request, Authentication authentication) {
+        AuthenticatedUser actor = (AuthenticatedUser) authentication.getPrincipal();
+        return adminDictionaryService.updateCategory(id, request, actor);
     }
 
     @DeleteMapping("/categories/{id}")
-    public void deleteCategory(@PathVariable Long id) {
-        adminDictionaryService.deactivateCategory(id);
+    public void deleteCategory(@PathVariable Long id, Authentication authentication) {
+        AuthenticatedUser actor = (AuthenticatedUser) authentication.getPrincipal();
+        adminDictionaryService.deactivateCategory(id, actor);
     }
 
     @GetMapping("/locations")
@@ -54,17 +59,20 @@ public class AdminDictionaryController {
     }
 
     @PostMapping("/locations")
-    public AdminLocationResponse createLocation(@Valid @RequestBody AdminLocationRequest request) {
-        return adminDictionaryService.createLocation(request);
+    public AdminLocationResponse createLocation(@Valid @RequestBody AdminLocationRequest request, Authentication authentication) {
+        AuthenticatedUser actor = (AuthenticatedUser) authentication.getPrincipal();
+        return adminDictionaryService.createLocation(request, actor);
     }
 
     @PutMapping("/locations/{id}")
-    public AdminLocationResponse updateLocation(@PathVariable Long id, @Valid @RequestBody AdminLocationRequest request) {
-        return adminDictionaryService.updateLocation(id, request);
+    public AdminLocationResponse updateLocation(@PathVariable Long id, @Valid @RequestBody AdminLocationRequest request, Authentication authentication) {
+        AuthenticatedUser actor = (AuthenticatedUser) authentication.getPrincipal();
+        return adminDictionaryService.updateLocation(id, request, actor);
     }
 
     @DeleteMapping("/locations/{id}")
-    public void deleteLocation(@PathVariable Long id) {
-        adminDictionaryService.deactivateLocation(id);
+    public void deleteLocation(@PathVariable Long id, Authentication authentication) {
+        AuthenticatedUser actor = (AuthenticatedUser) authentication.getPrincipal();
+        adminDictionaryService.deactivateLocation(id, actor);
     }
 }

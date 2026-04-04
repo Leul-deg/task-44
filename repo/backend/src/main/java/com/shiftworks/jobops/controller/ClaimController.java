@@ -28,6 +28,7 @@ public class ClaimController {
     private final ClaimService claimService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('EMPLOYER','ADMIN')")
     public PageResponse<ClaimResponse> list(Authentication authentication,
                                             @RequestParam(value = "status", required = false) String status,
                                             @RequestParam(value = "page", defaultValue = "0") int page,

@@ -5,7 +5,7 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/shiftworks?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
     username: ${SPRING_DATASOURCE_USERNAME:shiftworks}
-    password: ${SPRING_DATASOURCE_PASSWORD:ShiftW0rks2026}
+    password: ${SPRING_DATASOURCE_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: none
@@ -23,7 +23,7 @@ spring:
 
 app:
   security:
-    aes-secret-key: ${AES_SECRET_KEY:0123456789abcdef0123456789abcdef}
+    aes-secret-key: ${AES_SECRET_KEY}
     password:
       min-length: 12
       rotation-days: 90

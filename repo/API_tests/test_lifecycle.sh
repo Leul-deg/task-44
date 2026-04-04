@@ -1,6 +1,9 @@
 #!/bin/bash
 BASE="http://localhost:8080"
 FAIL=0
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/lib/test_env.sh"
+require_admin_password
 
 jp() { python3 -c "import sys,json; print(json.load(sys.stdin).get('$1',''))" 2>/dev/null; }
 jpf() { python3 -c "import json; print(json.load(open('$1')).get('$2',''))" 2>/dev/null; }
@@ -17,15 +20,29 @@ echo "  DRAFT → REVIEW → APPROVE → PUBLISH → UNPUBLISH"
 echo "  Then: new job → REVIEW → TAKEDOWN → APPEAL"
 echo "============================================="
 
-EMP_CSRF=$(curl -s -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" \
-  -d '{"username":"employer1","password":"Employer@12345"}' -c /tmp/emp.txt | jp csrfToken)
+ADMIN_CSRF=$(curl -s -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" \
+  -d "$(admin_login_json)" -c /tmp/admin.txt | jp csrfToken)
 
-if [ -z "$EMP_CSRF" ]; then echo "FATAL: employer1 login failed"; exit 1; fi
+EMPLOYER_USER="lifecycle_emp_$(date +%s)"
+REVIEWER_USER="lifecycle_rev_$(date +%s)"
+
+curl -s -o /dev/null -b /tmp/admin.txt -X POST "$BASE/api/admin/users" \
+  -H "Content-Type: application/json" -H "X-XSRF-TOKEN: $ADMIN_CSRF" \
+  -d "{\"username\":\"$EMPLOYER_USER\",\"email\":\"$EMPLOYER_USER@test.com\",\"password\":\"StrongPass123!\",\"role\":\"EMPLOYER\"}"
+
+curl -s -o /dev/null -b /tmp/admin.txt -X POST "$BASE/api/admin/users" \
+  -H "Content-Type: application/json" -H "X-XSRF-TOKEN: $ADMIN_CSRF" \
+  -d "{\"username\":\"$REVIEWER_USER\",\"email\":\"$REVIEWER_USER@test.com\",\"password\":\"StrongPass123!\",\"role\":\"REVIEWER\"}"
+
+EMP_CSRF=$(curl -s -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" \
+  -d "{\"username\":\"$EMPLOYER_USER\",\"password\":\"StrongPass123!\"}" -c /tmp/emp.txt | jp csrfToken)
+
+if [ -z "$EMP_CSRF" ]; then echo "FATAL: employer login failed"; exit 1; fi
 
 REV_CSRF=$(curl -s -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" \
-  -d '{"username":"reviewer1","password":"Reviewer@12345"}' -c /tmp/rev.txt | jp csrfToken)
+  -d "{\"username\":\"$REVIEWER_USER\",\"password\":\"StrongPass123!\"}" -c /tmp/rev.txt | jp csrfToken)
 
-if [ -z "$REV_CSRF" ]; then echo "FATAL: reviewer1 login failed"; exit 1; fi
+if [ -z "$REV_CSRF" ]; then echo "FATAL: reviewer login failed"; exit 1; fi
 
 # === HAPPY PATH ===
 echo -e "\n--- Happy Path ---"
@@ -51,7 +68,7 @@ check "Approve Job #$JOB1 → $S" "200" "$RESP"
 
 echo -e "\n[4] Employer publishes (step-up) → PUBLISHED"
 RESP=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/jobs/$JOB1/publish" -b /tmp/emp.txt \
-  -H "Content-Type: application/json" -H "X-XSRF-TOKEN: $EMP_CSRF" -d '{"stepUpPassword":"Employer@12345"}')
+  -H "Content-Type: application/json" -H "X-XSRF-TOKEN: $EMP_CSRF" -d '{"stepUpPassword":"StrongPass123!"}')
 S=$(curl -s "$BASE/api/jobs/$JOB1" -b /tmp/emp.txt | jp status)
 check "Publish Job #$JOB1 → $S" "200" "$RESP"
 
@@ -76,14 +93,14 @@ curl -s -o /dev/null -X POST "$BASE/api/jobs/$JOB2/submit" -b /tmp/emp.txt -H "X
 curl -s -o /dev/null -X POST "$BASE/api/review/jobs/$JOB2/approve" -b /tmp/rev.txt \
   -H "Content-Type: application/json" -H "X-XSRF-TOKEN: $REV_CSRF" -d '{"rationale":"Approved for takedown test."}'
 curl -s -o /dev/null -X POST "$BASE/api/jobs/$JOB2/publish" -b /tmp/emp.txt \
-  -H "Content-Type: application/json" -H "X-XSRF-TOKEN: $EMP_CSRF" -d '{"stepUpPassword":"Employer@12345"}'
+  -H "Content-Type: application/json" -H "X-XSRF-TOKEN: $EMP_CSRF" -d '{"stepUpPassword":"StrongPass123!"}'
 S=$(curl -s "$BASE/api/jobs/$JOB2" -b /tmp/emp.txt | jp status)
 echo "  Job #$JOB2 → $S (ready for takedown)"
 
 echo -e "\n[8] Reviewer takedown (step-up) → TAKEN_DOWN"
 RESP=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/review/jobs/$JOB2/takedown" -b /tmp/rev.txt \
   -H "Content-Type: application/json" -H "X-XSRF-TOKEN: $REV_CSRF" \
-  -d '{"rationale":"Policy violation found upon re-review.","stepUpPassword":"Reviewer@12345"}')
+  -d '{"rationale":"Policy violation found upon re-review.","stepUpPassword":"StrongPass123!"}')
 S=$(curl -s "$BASE/api/jobs/$JOB2" -b /tmp/emp.txt | jp status)
 check "Takedown Job #$JOB2 → $S" "200" "$RESP"
 

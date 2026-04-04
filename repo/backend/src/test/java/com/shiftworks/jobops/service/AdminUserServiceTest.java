@@ -1,5 +1,6 @@
 package com.shiftworks.jobops.service;
 
+import com.shiftworks.jobops.dto.AdminUserCreateRequest;
 import com.shiftworks.jobops.dto.AdminUserRoleChangeRequest;
 import com.shiftworks.jobops.entity.User;
 import com.shiftworks.jobops.enums.UserRole;
@@ -18,10 +19,15 @@ import org.mockito.quality.Strictness;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNotNull;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -71,10 +77,74 @@ class AdminUserServiceTest {
         locked.setFailedLoginAttempts(5);
         when(userRepository.findById(2L)).thenReturn(Optional.of(locked));
 
-        adminUserService.unlock(2L);
+        adminUserService.unlock(2L, adminUser);
 
         assertEquals(UserStatus.ACTIVE, locked.getStatus());
         assertEquals(0, locked.getFailedLoginAttempts());
         verify(userRepository).save(locked);
+    }
+
+    // ----- audit tests -----
+
+    @Test
+    void createRecordsActorInAudit() {
+        AdminUserCreateRequest request = new AdminUserCreateRequest("newuser", "new@example.com", "Password1!", UserRole.EMPLOYER);
+        when(userRepository.findByUsername("newuser")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("new@example.com")).thenReturn(Optional.empty());
+        when(passwordPolicyService.validate(any())).thenReturn(List.of());
+        when(passwordEncoder.encode(any())).thenReturn("hashed");
+        when(userRepository.save(any())).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
+            u.setId(99L);
+            return u;
+        });
+
+        adminUserService.create(request, adminUser);
+
+        verify(auditService).log(
+            eq(adminUser.id()),
+            eq("USER_CREATED"),
+            eq("USER"),
+            any(),
+            isNull(),
+            isNotNull()
+        );
+    }
+
+    @Test
+    void unlockRecordsAuditWithActor() {
+        User locked = buildUser(2L, UserRole.EMPLOYER);
+        locked.setStatus(UserStatus.LOCKED);
+        when(userRepository.findById(2L)).thenReturn(Optional.of(locked));
+
+        adminUserService.unlock(2L, adminUser);
+
+        verify(auditService).log(
+            eq(adminUser.id()),
+            eq("USER_UNLOCKED"),
+            eq("USER"),
+            eq(2L),
+            isNotNull(),
+            isNotNull()
+        );
+    }
+
+    @Test
+    void resetPasswordRecordsAuditWithActor() {
+        User user = buildUser(2L, UserRole.EMPLOYER);
+        when(userRepository.findById(2L)).thenReturn(Optional.of(user));
+        when(passwordEncoder.encode(any())).thenReturn("hashed");
+        when(passwordPolicyService.isValid(any())).thenReturn(true);
+
+        adminUserService.resetPassword(2L, adminUser);
+
+        verify(auditService).log(
+            eq(adminUser.id()),
+            eq("USER_PASSWORD_RESET"),
+            eq("USER"),
+            eq(2L),
+            isNull(),
+            isNotNull()
+        );
     }
 }

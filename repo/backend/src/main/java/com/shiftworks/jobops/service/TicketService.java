@@ -90,9 +90,12 @@ public class TicketService {
     }
 
     @Transactional
-    public TicketResponse updateTicket(Long id, TicketUpdateRequest request) {
+    public TicketResponse updateTicket(Long id, TicketUpdateRequest request, AuthenticatedUser actor) {
         Ticket ticket = ticketRepository.findById(id)
             .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "ticket: Not found"));
+        java.util.Map<String, Object> before = java.util.Map.of(
+            "status", ticket.getStatus().name(),
+            "priority", ticket.getPriority().name());
         if (request.status() != null) {
             ticket.setStatus(request.status());
         }
@@ -109,6 +112,12 @@ public class TicketService {
         }
         ticket.setUpdatedAt(Instant.now());
         ticketRepository.save(ticket);
+        java.util.Map<String, Object> after = new java.util.HashMap<>();
+        after.put("status", ticket.getStatus().name());
+        after.put("priority", ticket.getPriority().name());
+        if (ticket.getResolution() != null) after.put("resolution", ticket.getResolution());
+        if (ticket.getAssignedTo() != null) after.put("assignedTo", ticket.getAssignedTo().getId());
+        auditService.log(actor.id(), "TICKET_UPDATED", "TICKET", id, before, after);
         return toResponse(ticket);
     }
 

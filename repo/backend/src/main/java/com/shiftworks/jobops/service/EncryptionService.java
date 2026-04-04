@@ -27,12 +27,25 @@ public class EncryptionService {
     @PostConstruct
     void init() {
         String raw = appProperties.getSecurity().getAesSecretKey();
-        byte[] keyBytes;
-        if (raw.length() == 32) {
-            keyBytes = raw.getBytes(StandardCharsets.UTF_8);
-        } else {
-            keyBytes = Base64.getDecoder().decode(raw);
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalStateException("AES_SECRET_KEY must be configured");
         }
+
+        byte[] keyBytes;
+        try {
+            if (raw.length() == 32) {
+                keyBytes = raw.getBytes(StandardCharsets.UTF_8);
+            } else {
+                keyBytes = Base64.getDecoder().decode(raw);
+            }
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalStateException("AES_SECRET_KEY must be a 32-character string or a valid Base64-encoded AES key", ex);
+        }
+
+        if (keyBytes.length != 16 && keyBytes.length != 24 && keyBytes.length != 32) {
+            throw new IllegalStateException("AES_SECRET_KEY must decode to a 16, 24, or 32 byte AES key");
+        }
+
         keySpec = new SecretKeySpec(keyBytes, "AES");
     }
 

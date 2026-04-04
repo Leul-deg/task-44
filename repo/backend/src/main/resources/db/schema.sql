@@ -246,10 +246,17 @@ CREATE TABLE IF NOT EXISTS backup_records (
     status ENUM('COMPLETED','FAILED','EXPIRED') NOT NULL DEFAULT 'COMPLETED'
 );
 
--- Seed: default admin user (password: Admin@123456789)
-INSERT IGNORE INTO users (username, email, password_hash, role, status, password_changed_at, created_at, updated_at)
-VALUES ('admin', 'admin@shiftworks.local', '$2b$10$uhDKNM11S8f4yWwTnR7gp.iOQJmEa1DTZXeFE9HJZgigs/4A3DO7y',
-        'ADMIN', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+DROP TRIGGER IF EXISTS prevent_audit_logs_update;
+CREATE TRIGGER prevent_audit_logs_update
+BEFORE UPDATE ON audit_logs
+FOR EACH ROW
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'audit_logs are immutable';
+
+DROP TRIGGER IF EXISTS prevent_audit_logs_delete;
+CREATE TRIGGER prevent_audit_logs_delete
+BEFORE DELETE ON audit_logs
+FOR EACH ROW
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'audit_logs are immutable';
 
 -- Seed: US locations
 INSERT IGNORE INTO locations (state, city) VALUES

@@ -1,6 +1,9 @@
 #!/bin/bash
 BASE=http://localhost:8080/api
 PASS=0; FAIL=0
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/lib/test_env.sh"
+require_admin_password
 
 jp() { python3 -c "import sys,json; print(json.load(sys.stdin).get('$1',''))" 2>/dev/null; }
 
@@ -17,7 +20,7 @@ check() {
 LOGIN_CODE=$(curl -s -o /tmp/auth_login.json -w "%{http_code}" -c /tmp/auth_cookies.txt \
   -X POST "$BASE/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"Admin@123456789"}')
+  -d "$(admin_login_json)")
 CSRF=$(python3 -c "import json; print(json.load(open('/tmp/auth_login.json')).get('csrfToken',''))" 2>/dev/null)
 check "Valid login returns 200" "200" "$LOGIN_CODE"
 

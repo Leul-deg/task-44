@@ -35,6 +35,7 @@ const routes = [
   { path: '/reviewer/appeals/:id', name: 'reviewer-appeal-detail', component: () => import('../views/AppealDetailView.vue'), meta: { requiresAuth: true, roles: ['REVIEWER'] } },
   { path: '/admin/dashboard', name: 'admin-dashboard', component: () => import('../views/AdminDashboardView.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
   { path: '/admin/users', name: 'admin-users', component: () => import('../views/AdminUsersView.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
+  { path: '/admin/job-items', name: 'admin-job-items', component: () => import('../views/AdminJobItemsView.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
   { path: '/admin/categories', name: 'admin-categories', component: () => import('../views/AdminCategoriesView.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
   { path: '/admin/locations', name: 'admin-locations', component: () => import('../views/AdminLocationsView.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
   { path: '/admin/claims', name: 'admin-claims', component: () => import('../views/AdminClaimsView.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
