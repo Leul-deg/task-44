@@ -3,10 +3,10 @@ services:
     image: mysql:8.0
     command: ["--log-bin-trust-function-creators=1"]
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ShiftRoot!2026#Safe}
       MYSQL_DATABASE: shiftworks
       MYSQL_USER: shiftworks
-      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-ShiftDb!2026#Safe}
     ports:
       - "3307:3306"
     volumes:
@@ -28,10 +28,10 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/shiftworks?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: shiftworks
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-ShiftDb!2026#Safe}
       SPRING_SQL_INIT_MODE: never
-      AES_SECRET_KEY: ${AES_SECRET_KEY:?Set AES_SECRET_KEY in .env}
-      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:?Set BOOTSTRAP_ADMIN_PASSWORD in .env}
+      AES_SECRET_KEY: ${AES_SECRET_KEY:-9f3d2a1b6c8e0d4f7a5b9c2e1d3f6a8b}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-ShiftAdmin!2026#Strong}
       FILE_STORAGE_PATH: /app/uploads
       BACKUP_PATH: /app/backups
     volumes:
