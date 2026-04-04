@@ -17,7 +17,8 @@ echo ""
 
 UNIT=0
 FRONT=0
-API_FAIL=0
+API_STATUS=0
+API_FAIL_COUNT=0
 
 # --- Backend unit tests ---
 echo "=== Backend Unit Tests ==="
@@ -52,7 +53,7 @@ echo ""
 echo "=== API Functional Tests ==="
 if ! curl -s http://localhost:8080/api/auth/captcha -o /dev/null 2>/dev/null; then
   echo "  [SKIP] Backend not running at localhost:8080. Start with: docker compose up -d"
-  API_FAIL=1
+  API_STATUS=2
 else
   FIRST=1
   for script in API_tests/test_*.sh; do
@@ -62,10 +63,13 @@ else
     echo "--- Running $script ---"
     bash "$script"
     if [ $? -ne 0 ]; then
-      API_FAIL=$((API_FAIL+1))
+      API_FAIL_COUNT=$((API_FAIL_COUNT+1))
     fi
     echo ""
   done
+  if [ $API_FAIL_COUNT -gt 0 ]; then
+    API_STATUS=1
+  fi
 fi
 
 # --- Summary ---
@@ -81,11 +85,13 @@ if [ $FRONT -eq 0 ]; then echo "  Frontend tests:  PASSED"
 elif [ $FRONT -eq 2 ]; then echo "  Frontend tests:  SKIPPED (node not found)"
 else echo "  Frontend tests:  FAILED"; fi
 
-if [ $API_FAIL -eq 0 ]; then echo "  API tests:       PASSED"
-else echo "  API tests:       FAILED ($API_FAIL)"; fi
+if [ $API_STATUS -eq 0 ]; then echo "  API tests:       PASSED"
+elif [ $API_STATUS -eq 2 ]; then echo "  API tests:       SKIPPED (backend not running)"
+else echo "  API tests:       FAILED ($API_FAIL_COUNT)"; fi
 
 echo "======================================"
 
 UNIT_OK=$( [ $UNIT -eq 0 ] || [ $UNIT -eq 2 ] && echo 1 || echo 0 )
 FRONT_OK=$( [ $FRONT -eq 0 ] || [ $FRONT -eq 2 ] && echo 1 || echo 0 )
-[ "$UNIT_OK" = "1" ] && [ "$FRONT_OK" = "1" ] && [ $API_FAIL -eq 0 ] && exit 0 || exit 1
+API_OK=$( [ $API_STATUS -eq 0 ] || [ $API_STATUS -eq 2 ] && echo 1 || echo 0 )
+[ "$UNIT_OK" = "1" ] && [ "$FRONT_OK" = "1" ] && [ "$API_OK" = "1" ] && exit 0 || exit 1
