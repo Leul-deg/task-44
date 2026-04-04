@@ -10,6 +10,12 @@ if [ -f .env ]; then
   set +a
 fi
 
+# Keep API test credentials aligned with docker-compose defaults when
+# no explicit environment is provided by CI.
+: "${BOOTSTRAP_ADMIN_PASSWORD:=ShiftAdmin!2026#Strong}"
+: "${JOBOPS_ADMIN_PASSWORD:=$BOOTSTRAP_ADMIN_PASSWORD}"
+export BOOTSTRAP_ADMIN_PASSWORD JOBOPS_ADMIN_PASSWORD
+
 echo "======================================"
 echo "  ShiftWorks JobOps — Test Runner"
 echo "======================================"
