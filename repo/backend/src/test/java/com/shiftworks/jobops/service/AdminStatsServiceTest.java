@@ -58,7 +58,7 @@ class AdminStatsServiceTest {
     @Test
     void postVolume_mapsRepositoryResultsToPoints() {
         Object[] row = new Object[]{Date.valueOf(LocalDate.of(2026, 4, 1)), 5};
-        when(jobPostingRepository.findPostVolumeBetween(any(), any())).thenReturn(List.of(row));
+        when(jobPostingRepository.findPostVolumeBetween(any(), any())).thenReturn(List.<Object[]>of(row));
 
         List<PostVolumePoint> result = adminStatsService.postVolume(30);
 

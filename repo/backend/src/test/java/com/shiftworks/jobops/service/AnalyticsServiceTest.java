@@ -38,7 +38,7 @@ class AnalyticsServiceTest {
     void postVolume_mapsRepositoryRowsToPoints() {
         Object[] row = {Date.valueOf(LocalDate.of(2026, 4, 10)), 5L};
         when(jobPostingRepository.findPostVolumeBetween(any(Instant.class), any(Instant.class)))
-            .thenReturn(List.of(row));
+            .thenReturn(List.<Object[]>of(row));
 
         List<PostVolumePoint> result = analyticsService.postVolume(null, null);
 
@@ -165,7 +165,7 @@ class AnalyticsServiceTest {
     void takedownTrend_mapsRepositoryRows() {
         Object[] row = {Date.valueOf(LocalDate.of(2026, 4, 12)), 7L};
         when(reviewActionRepository.findTakedownTrendBetween(any(Instant.class), any(Instant.class)))
-            .thenReturn(List.of(row));
+            .thenReturn(List.<Object[]>of(row));
 
         List<PostVolumePoint> result = analyticsService.takedownTrend(null, null);
 

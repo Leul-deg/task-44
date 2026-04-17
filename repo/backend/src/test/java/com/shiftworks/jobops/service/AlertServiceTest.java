@@ -40,7 +40,7 @@ class AlertServiceTest {
         alert.setAlertType("ANOMALY");
         alert.setMetricName("postVolume");
         alert.setMessage("Spike detected");
-        alert.setSeverity(AlertSeverity.HIGH);
+        alert.setSeverity(AlertSeverity.CRITICAL);
         alert.setRead(read);
         alert.setCreatedAt(Instant.now());
         return alert;
@@ -64,13 +64,13 @@ class AlertServiceTest {
 
     @Test
     void listWithSeverityFilter_callsCorrectRepository() {
-        when(alertRepository.findBySeverity(eq(AlertSeverity.HIGH), any(Pageable.class)))
+        when(alertRepository.findBySeverity(eq(AlertSeverity.CRITICAL), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(buildAlert(1L, false))));
 
-        Page<?> result = alertService.list(AlertSeverity.HIGH, null, 0, 10);
+        Page<?> result = alertService.list(AlertSeverity.CRITICAL, null, 0, 10);
 
         assertThat(result.getTotalElements()).isEqualTo(1);
-        verify(alertRepository).findBySeverity(eq(AlertSeverity.HIGH), any(Pageable.class));
+        verify(alertRepository).findBySeverity(eq(AlertSeverity.CRITICAL), any(Pageable.class));
     }
 
     @Test
@@ -85,12 +85,12 @@ class AlertServiceTest {
 
     @Test
     void listBySeverityAndUnread_callsCombinedQuery() {
-        when(alertRepository.findBySeverityAndReadFalse(eq(AlertSeverity.HIGH), any(Pageable.class)))
+        when(alertRepository.findBySeverityAndReadFalse(eq(AlertSeverity.CRITICAL), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of()));
 
-        alertService.list(AlertSeverity.HIGH, false, 0, 10);
+        alertService.list(AlertSeverity.CRITICAL, false, 0, 10);
 
-        verify(alertRepository).findBySeverityAndReadFalse(eq(AlertSeverity.HIGH), any(Pageable.class));
+        verify(alertRepository).findBySeverityAndReadFalse(eq(AlertSeverity.CRITICAL), any(Pageable.class));
     }
 
     @Test

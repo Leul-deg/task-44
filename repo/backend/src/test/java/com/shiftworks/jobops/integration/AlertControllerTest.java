@@ -67,7 +67,7 @@ class AlertControllerTest {
 
     private AlertPageResponse sampleAlert() {
         return new AlertPageResponse(5L, "ANOMALY", "postVolume", "Spike detected",
-                AlertSeverity.HIGH, false, null, Instant.now());
+                AlertSeverity.CRITICAL, false, null, Instant.now());
     }
 
     @Test
