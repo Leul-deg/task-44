@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { mount, flushPromises } from '@vue/test-utils';
 
 const { mockGetScheduledReports, mockCreateScheduledReport, mockUpdateScheduledReport, mockDeleteScheduledReport } = vi.hoisted(() => ({
   mockGetScheduledReports: vi.fn(),
@@ -63,7 +63,7 @@ describe('ReportScheduler', () => {
     mockGetScheduledReports.mockResolvedValue({ data: [] });
     mockGetDashboards.mockResolvedValue({ data: [] });
     mount(ReportScheduler, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     expect(mockGetScheduledReports).toHaveBeenCalledOnce();
     expect(mockGetDashboards).toHaveBeenCalledOnce();
   });
@@ -74,7 +74,7 @@ describe('ReportScheduler', () => {
     });
     mockGetDashboards.mockResolvedValue({ data: [] });
     const wrapper = mount(ReportScheduler, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     expect(wrapper.vm.schedules).toHaveLength(1);
     expect(wrapper.vm.schedules[0].cronExpression).toBe('0 0 2 * * *');
   });

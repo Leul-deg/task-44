@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { mount, flushPromises } from '@vue/test-utils';
 
 const { mockGetAuditLogs, mockGetAuditLogDetail } = vi.hoisted(() => ({
   mockGetAuditLogs: vi.fn(),
@@ -39,7 +39,7 @@ describe('AdminAuditView', () => {
   it('calls getAuditLogs on mount', async () => {
     mockGetAuditLogs.mockResolvedValue({ data: { items: [], totalElements: 0 } });
     mount(AdminAuditView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     expect(mockGetAuditLogs).toHaveBeenCalledOnce();
   });
 
@@ -51,7 +51,7 @@ describe('AdminAuditView', () => {
       }
     });
     const wrapper = mount(AdminAuditView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     expect(wrapper.vm.logs).toHaveLength(1);
     expect(wrapper.vm.total).toBe(1);
   });
@@ -62,7 +62,7 @@ describe('AdminAuditView', () => {
       data: { id: 1, action: 'USER_LOGIN', entityType: 'USER', entityId: 1 }
     });
     const wrapper = mount(AdminAuditView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     await wrapper.vm.showDetail({ id: 1 });
     expect(mockGetAuditLogDetail).toHaveBeenCalledWith(1);
   });
@@ -70,7 +70,7 @@ describe('AdminAuditView', () => {
   it('resetFilters clears filter state', async () => {
     mockGetAuditLogs.mockResolvedValue({ data: { items: [], totalElements: 0 } });
     const wrapper = mount(AdminAuditView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     wrapper.vm.filters.entityType = 'USER';
     wrapper.vm.filters.action = 'LOGIN';
     wrapper.vm.resetFilters();

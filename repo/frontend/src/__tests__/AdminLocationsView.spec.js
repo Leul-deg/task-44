@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { mount, flushPromises } from '@vue/test-utils';
 
 const { mockGetAdminLocations, mockCreateLocation, mockUpdateLocation, mockDeleteLocation } = vi.hoisted(() => ({
   mockGetAdminLocations: vi.fn(),
@@ -41,7 +41,7 @@ describe('AdminLocationsView', () => {
   it('calls getAdminLocations on mount', async () => {
     mockGetAdminLocations.mockResolvedValue({ data: [] });
     mount(AdminLocationsView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     expect(mockGetAdminLocations).toHaveBeenCalledOnce();
   });
 
@@ -50,7 +50,7 @@ describe('AdminLocationsView', () => {
       data: [{ id: 1, state: 'TX', city: 'Austin', active: true }]
     });
     const wrapper = mount(AdminLocationsView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     expect(wrapper.vm.locations).toHaveLength(1);
     expect(wrapper.vm.locations[0].city).toBe('Austin');
   });
@@ -76,7 +76,7 @@ describe('AdminLocationsView', () => {
     mockGetAdminLocations.mockResolvedValue({ data: [] });
     mockCreateLocation.mockResolvedValue({});
     const wrapper = mount(AdminLocationsView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     wrapper.vm.dialog.id = null;
     wrapper.vm.dialog.state = 'WA';
     wrapper.vm.dialog.city = 'Seattle';
@@ -88,7 +88,7 @@ describe('AdminLocationsView', () => {
     mockGetAdminLocations.mockResolvedValue({ data: [] });
     mockUpdateLocation.mockResolvedValue({});
     const wrapper = mount(AdminLocationsView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     wrapper.vm.dialog.id = 3;
     wrapper.vm.dialog.state = 'TX';
     wrapper.vm.dialog.city = 'Houston';

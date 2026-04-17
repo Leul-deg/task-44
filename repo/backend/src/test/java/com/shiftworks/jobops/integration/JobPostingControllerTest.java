@@ -119,7 +119,7 @@ class JobPostingControllerTest {
         mockMvc.perform(post("/api/jobs")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"Test Job\",\"description\":\"desc\",\"categoryId\":1,\"locationId\":1," +
-                         "\"payType\":\"HOURLY\",\"settlementType\":\"PER_HOUR\",\"payAmount\":15.00," +
+                         "\"payType\":\"HOURLY\",\"settlementType\":\"WEEKLY\",\"payAmount\":15.00," +
                          "\"headcount\":2,\"weeklyHours\":20,\"contactPhone\":\"555-1234\"}")
                 .cookie(new Cookie(SessionService.SESSION_COOKIE, "test-session-token"))
                 .header("X-XSRF-TOKEN", "test-csrf"))
@@ -171,7 +171,7 @@ class JobPostingControllerTest {
         mockMvc.perform(put("/api/jobs/1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"Updated Job\",\"description\":\"desc\",\"categoryId\":1,\"locationId\":1," +
-                         "\"payType\":\"HOURLY\",\"settlementType\":\"PER_HOUR\",\"payAmount\":20.00," +
+                         "\"payType\":\"HOURLY\",\"settlementType\":\"WEEKLY\",\"payAmount\":20.00," +
                          "\"headcount\":3,\"weeklyHours\":25,\"contactPhone\":\"555-9999\"}")
                 .cookie(new Cookie(SessionService.SESSION_COOKIE, "test-session-token"))
                 .header("X-XSRF-TOKEN", "test-csrf"))

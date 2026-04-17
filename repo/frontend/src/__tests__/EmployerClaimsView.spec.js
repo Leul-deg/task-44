@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { mount, flushPromises } from '@vue/test-utils';
 
 const { mockGetClaims, mockGetTickets, mockCreateClaim, mockCreateTicket } = vi.hoisted(() => ({
   mockGetClaims: vi.fn(),
@@ -46,7 +46,7 @@ describe('EmployerClaimsView', () => {
     mockGetClaims.mockResolvedValue({ data: [] });
     mockGetTickets.mockResolvedValue({ data: [] });
     mount(EmployerClaimsView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     expect(mockGetClaims).toHaveBeenCalledOnce();
     expect(mockGetTickets).toHaveBeenCalledOnce();
   });
@@ -57,7 +57,7 @@ describe('EmployerClaimsView', () => {
     });
     mockGetTickets.mockResolvedValue({ data: [] });
     const wrapper = mount(EmployerClaimsView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     expect(wrapper.vm.claims).toHaveLength(1);
     expect(wrapper.vm.claims[0].description).toBe('Claim 1');
   });
@@ -67,7 +67,7 @@ describe('EmployerClaimsView', () => {
     mockGetTickets.mockResolvedValue({ data: [] });
     mockCreateClaim.mockResolvedValue({ data: { id: 2 } });
     const wrapper = mount(EmployerClaimsView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     wrapper.vm.claimForm.jobPostingId = '5';
     wrapper.vm.claimForm.description = 'New claim';
     await wrapper.vm.submitClaim();
@@ -79,7 +79,7 @@ describe('EmployerClaimsView', () => {
     mockGetTickets.mockResolvedValue({ data: [] });
     mockCreateTicket.mockResolvedValue({ data: { id: 3 } });
     const wrapper = mount(EmployerClaimsView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     wrapper.vm.ticketForm.subject = 'Issue';
     wrapper.vm.ticketForm.description = 'Details here';
     wrapper.vm.ticketForm.priority = 'HIGH';

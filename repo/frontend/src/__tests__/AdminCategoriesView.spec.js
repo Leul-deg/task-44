@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { mount, flushPromises } from '@vue/test-utils';
 
 const { mockGetAdminCategories, mockCreateCategory, mockUpdateCategory, mockDeleteCategory } = vi.hoisted(() => ({
   mockGetAdminCategories: vi.fn(),
@@ -41,7 +41,7 @@ describe('AdminCategoriesView', () => {
   it('calls getAdminCategories on mount', async () => {
     mockGetAdminCategories.mockResolvedValue({ data: [] });
     mount(AdminCategoriesView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     expect(mockGetAdminCategories).toHaveBeenCalledOnce();
   });
 
@@ -50,7 +50,7 @@ describe('AdminCategoriesView', () => {
       data: [{ id: 1, name: 'Engineering', description: 'Tech', active: true, activePostings: 3 }]
     });
     const wrapper = mount(AdminCategoriesView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     expect(wrapper.vm.categories).toHaveLength(1);
     expect(wrapper.vm.categories[0].name).toBe('Engineering');
   });
@@ -75,7 +75,7 @@ describe('AdminCategoriesView', () => {
     mockGetAdminCategories.mockResolvedValue({ data: [] });
     mockCreateCategory.mockResolvedValue({});
     const wrapper = mount(AdminCategoriesView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     wrapper.vm.dialog.id = null;
     wrapper.vm.dialog.name = 'New Cat';
     wrapper.vm.dialog.description = 'Desc';
@@ -87,7 +87,7 @@ describe('AdminCategoriesView', () => {
     mockGetAdminCategories.mockResolvedValue({ data: [] });
     mockUpdateCategory.mockResolvedValue({});
     const wrapper = mount(AdminCategoriesView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     wrapper.vm.dialog.id = 3;
     wrapper.vm.dialog.name = 'Updated';
     wrapper.vm.dialog.description = 'Desc';

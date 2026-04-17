@@ -123,13 +123,15 @@ APPEAL_CODE=$(curl -s -o /dev/null -w "%{http_code}" -b "$EMPLOYER_COOKIE" -X PO
   -d "{\"jobPostingId\":$JOB_ID,\"appealReason\":\"The posting complies with all policies and should be reinstated\"}")
 check "Employer creates appeal" "200" "$APPEAL_CODE"
 
-# List appeals and get first ID for this job
+# List appeals and get the appeal ID that matches this job
 APPEAL_ID=$(curl -s -b "$REVIEWER_COOKIE" -X GET "$BASE/appeals" \
-  | python3 -c "
-import sys,json
+  | JOB_ID="$JOB_ID" python3 -c "
+import sys,json,os
 data=json.load(sys.stdin)
 items = data.get('items', data) if isinstance(data, dict) else data
-print(items[0]['id'] if items else '')
+jid = int(os.environ.get('JOB_ID','0'))
+match = next((x for x in items if x.get('jobPostingId') == jid or (x.get('jobPosting') or {}).get('id') == jid), None)
+print(match['id'] if match else (items[0]['id'] if items else ''))
 " 2>/dev/null)
 
 # Process appeal

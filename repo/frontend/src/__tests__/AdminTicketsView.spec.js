@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { mount, flushPromises } from '@vue/test-utils';
 
 const { mockGetTickets, mockGetUsers, mockUpdateTicket } = vi.hoisted(() => ({
   mockGetTickets: vi.fn(),
@@ -47,7 +47,7 @@ describe('AdminTicketsView', () => {
     mockGetTickets.mockResolvedValue({ data: { items: [], totalElements: 0 } });
     mockGetUsers.mockResolvedValue({ data: { items: [] } });
     mount(AdminTicketsView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     expect(mockGetTickets).toHaveBeenCalledOnce();
     expect(mockGetUsers).toHaveBeenCalledOnce();
   });
@@ -57,7 +57,7 @@ describe('AdminTicketsView', () => {
     mockGetTickets.mockResolvedValue({ data: { items: [fakeTicket], totalElements: 1 } });
     mockGetUsers.mockResolvedValue({ data: { items: [] } });
     const wrapper = mount(AdminTicketsView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     expect(wrapper.vm.tickets).toHaveLength(1);
     expect(wrapper.vm.tickets[0].subject).toBe('Bug');
   });
@@ -66,7 +66,7 @@ describe('AdminTicketsView', () => {
     mockGetTickets.mockResolvedValue({ data: { items: [], totalElements: 15 } });
     mockGetUsers.mockResolvedValue({ data: { items: [] } });
     const wrapper = mount(AdminTicketsView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     expect(wrapper.vm.pagination.total).toBe(15);
   });
 
@@ -86,7 +86,7 @@ describe('AdminTicketsView', () => {
     mockGetUsers.mockResolvedValue({ data: { items: [] } });
     mockUpdateTicket.mockResolvedValue({});
     const wrapper = mount(AdminTicketsView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     wrapper.vm.dialog.ticket = { id: 5 };
     wrapper.vm.dialog.status = 'RESOLVED';
     wrapper.vm.dialog.priority = 'LOW';

@@ -38,4 +38,8 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, J
 
     @Query("SELECT COUNT(j) FROM JobPosting j WHERE j.createdAt >= :since")
     long countCreatedSince(@Param("since") Instant since);
+
+    /** Returns the raw (encrypted) contact_phone column, bypassing the JPA converter. Test-only use. */
+    @Query(value = "SELECT contact_phone FROM job_postings WHERE id = :id", nativeQuery = true)
+    String findRawContactPhoneById(@Param("id") Long id);
 }

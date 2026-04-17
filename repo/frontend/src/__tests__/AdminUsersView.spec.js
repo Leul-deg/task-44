@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { mount, flushPromises } from '@vue/test-utils';
 
 const { mockGetUsers, mockCreateUser } = vi.hoisted(() => ({
   mockGetUsers: vi.fn(),
@@ -60,7 +60,7 @@ describe('AdminUsersView', () => {
   it('calls getUsers on mount', async () => {
     mockGetUsers.mockResolvedValue({ data: { items: [], totalElements: 0 } });
     mount(AdminUsersView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     expect(mockGetUsers).toHaveBeenCalledOnce();
   });
 
@@ -68,7 +68,7 @@ describe('AdminUsersView', () => {
     const fakeUser = { id: 1, username: 'emp1', email: 'e@e.com', role: 'EMPLOYER', status: 'ACTIVE', createdAt: new Date().toISOString() };
     mockGetUsers.mockResolvedValue({ data: { items: [fakeUser], totalElements: 1 } });
     const wrapper = mount(AdminUsersView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     expect(wrapper.vm.users).toHaveLength(1);
     expect(wrapper.vm.users[0].username).toBe('emp1');
   });
@@ -76,7 +76,7 @@ describe('AdminUsersView', () => {
   it('sets pagination.total from API response', async () => {
     mockGetUsers.mockResolvedValue({ data: { items: [], totalElements: 42 } });
     const wrapper = mount(AdminUsersView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     expect(wrapper.vm.pagination.total).toBe(42);
   });
 

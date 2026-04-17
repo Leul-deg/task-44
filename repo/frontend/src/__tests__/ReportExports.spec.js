@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { mount, flushPromises } from '@vue/test-utils';
 
 const { mockGetExports, mockDownloadExport } = vi.hoisted(() => ({
   mockGetExports: vi.fn(),
@@ -32,7 +32,7 @@ describe('ReportExports', () => {
   it('calls getExports on mount', async () => {
     mockGetExports.mockResolvedValue({ data: [] });
     mount(ReportExports, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     expect(mockGetExports).toHaveBeenCalledOnce();
   });
 
@@ -41,7 +41,7 @@ describe('ReportExports', () => {
       data: [{ id: 1, dashboardName: 'Monthly Board', masked: true, createdAt: null }]
     });
     const wrapper = mount(ReportExports, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     expect(wrapper.vm.exportsList).toHaveLength(1);
     expect(wrapper.vm.exportsList[0].dashboardName).toBe('Monthly Board');
   });

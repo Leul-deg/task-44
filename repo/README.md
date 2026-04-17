@@ -17,10 +17,16 @@ A full-stack offline-capable platform for managing part-time job postings with e
 - Docker Compose v2+
 
 ## Quick Start (Docker — recommended)
+Create a `.env` file **before** the first `docker compose up`. Compose does **not** ship default database passwords, encryption keys, or bootstrap credentials; missing variables produce empty values and services will fail to start or boot securely.
+
 ```bash
 cp .env.example .env
-# edit .env and set strong values for MYSQL_ROOT_PASSWORD, DB_PASSWORD,
-# AES_SECRET_KEY, and BOOTSTRAP_ADMIN_PASSWORD
+# Required: set MYSQL_ROOT_PASSWORD, DB_PASSWORD, AES_SECRET_KEY (exactly 32 bytes — see .env.example),
+# and BOOTSTRAP_ADMIN_PASSWORD (strong password, min length per SecretPolicyValidator).
+
+# Optional: fail fast if any required variable is missing or AES key length is invalid
+./scripts/check-env.sh
+
 docker compose up --build
 ```
 Wait 30-60 seconds for all services to start. Verify with:
@@ -102,15 +108,13 @@ npm run dev
 
 ## Development Credentials
 
-When running locally with the default `docker-compose.yml` (no `.env` file), these credentials apply:
+| Role     | Username | Password / secret source | How to obtain |
+|----------|----------|----------------------------|---------------|
+| ADMIN    | `admin`  | Value of `BOOTSTRAP_ADMIN_PASSWORD` in your `.env` | Seeded on first backend boot from that variable |
+| EMPLOYER | _(none)_ | _(create one)_             | Log in as admin → Admin → Users → Create User, set Role = EMPLOYER |
+| REVIEWER | _(none)_ | _(create one)_             | Log in as admin → Admin → Users → Create User, set Role = REVIEWER |
 
-| Role     | Username  | Password                  | How to obtain |
-|----------|-----------|---------------------------|---------------|
-| ADMIN    | `admin`   | `ShiftAdmin!2026#Strong`  | Auto-seeded on first boot (the `BOOTSTRAP_ADMIN_PASSWORD` default in `docker-compose.yml`) |
-| EMPLOYER | _(none)_  | _(create one)_            | Log in as admin → Admin → Users → Create User, set Role = EMPLOYER |
-| REVIEWER | _(none)_  | _(create one)_            | Log in as admin → Admin → Users → Create User, set Role = REVIEWER |
-
-> **Note:** The bootstrap password is only a default for local development. Set a strong `BOOTSTRAP_ADMIN_PASSWORD` in your `.env` for any shared or production environment and rotate it after first login.
+> **Note:** There are no hard-coded compose passwords. Use a strong `BOOTSTRAP_ADMIN_PASSWORD` in `.env` even for local work, and rotate it after first login if the environment is shared.
 
 ## User Roles
 
@@ -121,9 +125,9 @@ When running locally with the default `docker-compose.yml` (no `.env` file), the
 | ADMIN    | User management, dictionaries, audit logs, backups, alerts |
 
 ## Running Tests
-- All tests: `./run_tests.sh`
+- All tests: `./run_tests.sh` (load the same `.env` as Docker so `BOOTSTRAP_ADMIN_PASSWORD` / `JOBOPS_ADMIN_PASSWORD` are set for `API_tests/`)
 - Backend tests only: `cd backend && ./mvnw test`
-- Individual API test: `./API_tests/test_auth.sh`
+- Individual API test: `./API_tests/test_auth.sh` (requires a running backend and `JOBOPS_ADMIN_PASSWORD` or `BOOTSTRAP_ADMIN_PASSWORD`; see `API_tests/lib/test_env.sh`)
 
 ## Verified Runtime Evidence
 The following was captured from a successful Docker Compose startup:
@@ -167,21 +171,26 @@ admin       ADMIN
 ├── schema-reference.sql# Full schema reference
 ├── docker-compose.yml
 ├── .env.example        # Template for local-only secrets/config
+├── scripts/check-env.sh  # Validates required env vars before compose (optional)
 ├── run_tests.sh
 └── README.md
 ```
 
 ## Security Notes
 
-| Variable | Purpose | Default | Production Guidance |
-|----------|---------|---------|---------------------|
-| `AES_SECRET_KEY` | Column-level AES-256-GCM encryption key | none committed | Supply via local `.env` or environment and replace with a securely generated 32-byte key |
-| `DB_PASSWORD` | MySQL application user password | none committed | Supply via local `.env`; do not commit it |
-| `MYSQL_ROOT_PASSWORD` | MySQL root password for local Docker setup | none committed | Supply via local `.env`; do not commit it |
-| `BOOTSTRAP_ADMIN_PASSWORD` | Initial admin login password used by bootstrap seeding | none committed | Supply via local `.env`; rotate after first login if used beyond local testing |
-| `COOKIE_SECURE` | Sets `Secure` flag on session cookies | Not set (cookies sent over HTTP) | Set to `true` in any HTTPS deployment to prevent session token leakage over unencrypted connections |
+| Variable | Purpose | In repository? | Guidance |
+|----------|---------|----------------|----------|
+| `AES_SECRET_KEY` | Column-level AES-256-GCM encryption key | **Not** in `docker-compose.yml` (required via `.env`) | Exactly **32 bytes**: 32 ASCII characters, or Base64 decoding to 32 raw bytes. Enforced at startup (`EncryptionService`, `SecretPolicyValidator`). |
+| `DB_PASSWORD` | MySQL application user password | **Not** in compose | Set in `.env`; never commit `.env` |
+| `MYSQL_ROOT_PASSWORD` | MySQL root password for Docker | **Not** in compose | Set in `.env` |
+| `BOOTSTRAP_ADMIN_PASSWORD` | Initial admin login password | **Not** in compose | Set in `.env`; must meet length/complexity checks when policy is enabled |
+| `COOKIE_SECURE` | Sets `Secure` flag on session cookies | Optional env | Set to `true` behind HTTPS |
 
-> **Important**: No runtime secrets are committed. Create a local `.env` from `.env.example` before running Docker or local startup commands.
+**Docker Compose:** Secret literals are not embedded in `docker-compose.yml`; variables are passed through from your shell or `.env` only.
+
+**CAPTCHA:** Challenge answers are held in an in-memory store on the backend process. This matches a single-node offline deployment; it is not shared across multiple backend replicas without further design.
+
+> **Important:** Create `.env` from `.env.example` before `docker compose up`. Committing a filled-in `.env` must be avoided.
 
 ## Key Features
 - **Job Lifecycle**: Full status machine (Draft → Review → Approve → Publish)

@@ -34,6 +34,8 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/login", "/api/auth/captcha").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET,
+                    "/api/categories", "/api/locations", "/api/locations/states").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().denyAll());

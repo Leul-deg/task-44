@@ -32,7 +32,7 @@ public class SecretPolicyValidator {
     @PostConstruct
     void validateSecrets() {
         String aesSecret = appProperties.getSecurity().getAesSecretKey();
-        requireStrong("AES_SECRET_KEY", aesSecret, 16);
+        requireStrong("AES_SECRET_KEY", aesSecret, 32);
 
         String datasourceUrl = safe(environment.getProperty("spring.datasource.url"));
         String datasourcePassword = environment.getProperty("spring.datasource.password");

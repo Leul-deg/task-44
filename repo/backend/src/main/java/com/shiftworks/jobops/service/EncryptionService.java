@@ -39,11 +39,11 @@ public class EncryptionService {
                 keyBytes = Base64.getDecoder().decode(raw);
             }
         } catch (IllegalArgumentException ex) {
-            throw new IllegalStateException("AES_SECRET_KEY must be a 32-character string or a valid Base64-encoded AES key", ex);
+            throw new IllegalStateException("AES_SECRET_KEY must be exactly 32 UTF-8 bytes (32 ASCII characters) or Base64 that decodes to exactly 32 bytes for AES-256-GCM", ex);
         }
 
-        if (keyBytes.length != 16 && keyBytes.length != 24 && keyBytes.length != 32) {
-            throw new IllegalStateException("AES_SECRET_KEY must decode to a 16, 24, or 32 byte AES key");
+        if (keyBytes.length != 32) {
+            throw new IllegalStateException("AES_SECRET_KEY must resolve to a 32-byte AES-256 key (use 32 ASCII characters or Base64 encoding of 32 raw bytes)");
         }
 
         keySpec = new SecretKeySpec(keyBytes, "AES");

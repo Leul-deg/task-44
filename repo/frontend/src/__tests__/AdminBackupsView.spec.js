@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { mount, flushPromises } from '@vue/test-utils';
 
 const { mockListBackups, mockTriggerBackup, mockRestoreBackup } = vi.hoisted(() => ({
   mockListBackups: vi.fn(),
@@ -34,7 +34,7 @@ describe('AdminBackupsView', () => {
   it('calls listBackups on mount', async () => {
     mockListBackups.mockResolvedValue({ data: [] });
     mount(AdminBackupsView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     expect(mockListBackups).toHaveBeenCalledOnce();
   });
 
@@ -43,7 +43,7 @@ describe('AdminBackupsView', () => {
       data: [{ id: 1, filename: 'backup-2026.sql', fileSize: 2048, status: 'COMPLETED' }]
     });
     const wrapper = mount(AdminBackupsView, { global: { stubs: globalStubs } });
-    await vi.runAllMicrotasks();
+    await flushPromises();
     expect(wrapper.vm.backups).toHaveLength(1);
     expect(wrapper.vm.backups[0].filename).toBe('backup-2026.sql');
   });

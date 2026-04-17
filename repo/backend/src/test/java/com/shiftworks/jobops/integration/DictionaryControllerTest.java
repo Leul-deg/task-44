@@ -140,10 +140,11 @@ class DictionaryControllerTest {
     }
 
     @Test
-    void categoriesUnauthenticated_returns403() throws Exception {
+    void categoriesUnauthenticated_returns200() throws Exception {
         when(sessionService.findValidSession(anyString())).thenReturn(Optional.empty());
+        when(categoryRepository.findByActiveTrueOrderByNameAsc()).thenReturn(List.of());
 
         mockMvc.perform(get("/api/categories"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
     }
 }
