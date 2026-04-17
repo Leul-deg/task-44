@@ -24,6 +24,12 @@ LOGIN_CODE=$(curl -s -o /tmp/auth_login.json -w "%{http_code}" -c /tmp/auth_cook
 CSRF=$(python3 -c "import json; print(json.load(open('/tmp/auth_login.json')).get('csrfToken',''))" 2>/dev/null)
 check "Valid login returns 200" "200" "$LOGIN_CODE"
 
+# Validate login response payload fields
+LOGIN_BODY=$(cat /tmp/auth_login.json)
+echo "$LOGIN_BODY" | grep -q '"csrfToken"' || { echo "FAIL: login response missing csrfToken"; FAIL=$((FAIL+1)); }
+echo "$LOGIN_BODY" | grep -q '"user"' || { echo "FAIL: login response missing user object"; FAIL=$((FAIL+1)); }
+echo "$LOGIN_BODY" | grep -q '"role"' || { echo "FAIL: login response user missing role field"; FAIL=$((FAIL+1)); }
+
 # Test 2: Invalid password
 CODE=$(curl -s -o /dev/null -w "%{http_code}" \
   -X POST "$BASE/auth/login" \
@@ -33,11 +39,17 @@ check "Invalid password returns 401" "401" "$CODE"
 
 # Test 3: Admin creates user (registration is admin-only)
 UNIQUE="testuser_$(date +%s)"
-CODE=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/auth_cookies.txt \
+CREATE_USER_BODY=$(curl -s -o /tmp/auth_create_user.json -w "%{http_code}" -b /tmp/auth_cookies.txt \
   -X POST "$BASE/admin/users" \
   -H "Content-Type: application/json" -H "X-XSRF-TOKEN: $CSRF" \
   -d "{\"username\":\"$UNIQUE\",\"email\":\"$UNIQUE@test.com\",\"password\":\"StrongPass123!\",\"role\":\"EMPLOYER\"}")
+CODE="$CREATE_USER_BODY"
 check "Admin creates user returns 200" "200" "$CODE"
+
+# Validate create user response payload fields
+USER_RESP=$(cat /tmp/auth_create_user.json 2>/dev/null)
+echo "$USER_RESP" | grep -q '"id"' || { echo "FAIL: create user response missing id field"; FAIL=$((FAIL+1)); }
+echo "$USER_RESP" | grep -q '"username"' || { echo "FAIL: create user response missing username field"; FAIL=$((FAIL+1)); }
 
 # Test 4: Weak password rejected
 CODE=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/auth_cookies.txt \
@@ -72,5 +84,5 @@ fi
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
-rm -f /tmp/auth_cookies.txt /tmp/auth_login.json
+rm -f /tmp/auth_cookies.txt /tmp/auth_login.json /tmp/auth_create_user.json
 exit $FAIL

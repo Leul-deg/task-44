@@ -54,6 +54,9 @@ RESP=$(curl -s -o /tmp/job.json -w "%{http_code}" -X POST "$BASE/api/jobs" -b /t
 JOB1=$(jpf /tmp/job.json id)
 S=$(jpf /tmp/job.json status)
 check "Created Job #$JOB1 → $S" "200" "$RESP"
+# Verify initial status is DRAFT
+CREATE_BODY=$(cat /tmp/job.json)
+( echo "$CREATE_BODY" | grep -q '"status":"DRAFT"' || echo "$CREATE_BODY" | grep -q '"status": "DRAFT"' ) || { echo "  ✗ Job #$JOB1 initial status not DRAFT (got: $S)"; FAIL=$((FAIL+1)); }
 
 echo -e "\n[2] Employer submits → PENDING_REVIEW"
 RESP=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/jobs/$JOB1/submit" -b /tmp/emp.txt -H "X-XSRF-TOKEN: $EMP_CSRF")
@@ -65,17 +68,26 @@ RESP=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/review/jobs/$JO
   -H "Content-Type: application/json" -H "X-XSRF-TOKEN: $REV_CSRF" -d '{"rationale":"Approved — meets all requirements."}')
 S=$(curl -s "$BASE/api/jobs/$JOB1" -b /tmp/emp.txt | jp status)
 check "Approve Job #$JOB1 → $S" "200" "$RESP"
+# Verify job status is APPROVED after approve
+STATUS_BODY=$(curl -s -b /tmp/emp.txt -H "X-XSRF-TOKEN: $EMP_CSRF" "$BASE/api/jobs/$JOB1")
+( echo "$STATUS_BODY" | grep -q '"status":"APPROVED"' || echo "$STATUS_BODY" | grep -q '"status": "APPROVED"' ) || { echo "  ✗ job not in APPROVED status after approve (got: $S)"; FAIL=$((FAIL+1)); }
 
 echo -e "\n[4] Employer publishes (step-up) → PUBLISHED"
 RESP=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/jobs/$JOB1/publish" -b /tmp/emp.txt \
   -H "Content-Type: application/json" -H "X-XSRF-TOKEN: $EMP_CSRF" -d '{"stepUpPassword":"StrongPass123!"}')
 S=$(curl -s "$BASE/api/jobs/$JOB1" -b /tmp/emp.txt | jp status)
 check "Publish Job #$JOB1 → $S" "200" "$RESP"
+# Verify job status is PUBLISHED after publish
+STATUS_BODY=$(curl -s -b /tmp/emp.txt -H "X-XSRF-TOKEN: $EMP_CSRF" "$BASE/api/jobs/$JOB1")
+( echo "$STATUS_BODY" | grep -q '"status":"PUBLISHED"' || echo "$STATUS_BODY" | grep -q '"status": "PUBLISHED"' ) || { echo "  ✗ job not in PUBLISHED status after publish (got: $S)"; FAIL=$((FAIL+1)); }
 
 echo -e "\n[5] Employer unpublishes → UNPUBLISHED"
 RESP=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/jobs/$JOB1/unpublish" -b /tmp/emp.txt -H "X-XSRF-TOKEN: $EMP_CSRF")
 S=$(curl -s "$BASE/api/jobs/$JOB1" -b /tmp/emp.txt | jp status)
 check "Unpublish Job #$JOB1 → $S" "200" "$RESP"
+# Verify job status is UNPUBLISHED after unpublish
+STATUS_BODY=$(curl -s -b /tmp/emp.txt -H "X-XSRF-TOKEN: $EMP_CSRF" "$BASE/api/jobs/$JOB1")
+( echo "$STATUS_BODY" | grep -q '"status":"UNPUBLISHED"' || echo "$STATUS_BODY" | grep -q '"status": "UNPUBLISHED"' ) || { echo "  ✗ job not in UNPUBLISHED status after unpublish (got: $S)"; FAIL=$((FAIL+1)); }
 
 # === TAKEDOWN + APPEAL PATH ===
 echo -e "\n--- Takedown + Appeal Path ---"

@@ -88,10 +88,13 @@ UPLOAD_CODE=$(curl -s -o /tmp/fc_upload.json -w "%{http_code}" -b "$EMPLOYER_COO
   "$BASE/files/upload")
 FILE_ID=$(python3 -c "import json; print(json.load(open('/tmp/fc_upload.json')).get('id',''))" 2>/dev/null)
 check "Upload valid PDF returns 200" "200" "$UPLOAD_CODE"
+grep -q '"id"' /tmp/fc_upload.json || { echo "FAIL: upload response missing id"; FAIL=$((FAIL+1)); }
+grep -q '"originalFilename"' /tmp/fc_upload.json || { echo "FAIL: upload response missing originalFilename"; FAIL=$((FAIL+1)); }
+grep -q '"status"' /tmp/fc_upload.json || { echo "FAIL: upload response missing status"; FAIL=$((FAIL+1)); }
 
 # Oversized file (>10MB)
 dd if=/dev/zero of=/tmp/bigfile.pdf bs=1M count=11 2>/dev/null
-BIG_CODE=$(curl -s -o /dev/null -w "%{http_code}" -b "$EMPLOYER_COOKIE" \
+BIG_CODE=$(curl -s -o /tmp/fc_big_err.json -w "%{http_code}" -b "$EMPLOYER_COOKIE" \
   -H "X-XSRF-TOKEN: $CSRF_EMP" \
   -F "file=@/tmp/bigfile.pdf" -F "entityType=CLAIM" -F "entityId=$CLAIM_ID" \
   "$BASE/files/upload")
@@ -100,20 +103,23 @@ if [ "$BIG_CODE" = "400" ] || [ "$BIG_CODE" = "413" ] || [ "$BIG_CODE" = "500" ]
 else
   echo "FAIL: Oversized file not rejected (expected 400/413/500, got $BIG_CODE)"; FAIL=$((FAIL+1))
 fi
+grep -qE '"message"|"error"' /tmp/fc_big_err.json || { echo "FAIL: oversized file error response missing message or error field"; FAIL=$((FAIL+1)); }
 
 # Wrong file type
 printf 'MZ' > /tmp/test.exe
-EXE_CODE=$(curl -s -o /dev/null -w "%{http_code}" -b "$EMPLOYER_COOKIE" \
+EXE_CODE=$(curl -s -o /tmp/fc_exe_err.json -w "%{http_code}" -b "$EMPLOYER_COOKIE" \
   -H "X-XSRF-TOKEN: $CSRF_EMP" \
   -F "file=@/tmp/test.exe" -F "entityType=CLAIM" -F "entityId=$CLAIM_ID" \
   "$BASE/files/upload")
 check "Wrong type returns 400" "400" "$EXE_CODE"
+grep -qE '"message"|"error"' /tmp/fc_exe_err.json || { echo "FAIL: wrong extension error response missing message or error field"; FAIL=$((FAIL+1)); }
 
 # Download
-DOWNLOAD_CODE=$(curl -s -o /dev/null -w "%{http_code}" -b "$EMPLOYER_COOKIE" "$BASE/files/$FILE_ID/download")
+DOWNLOAD_CODE=$(curl -s -o /tmp/download_out.bin -w "%{http_code}" -b "$EMPLOYER_COOKIE" "$BASE/files/$FILE_ID/download")
 check "Download file returns 200" "200" "$DOWNLOAD_CODE"
+[ -s /tmp/download_out.bin ] || { echo "FAIL: downloaded file is empty"; FAIL=$((FAIL+1)); }
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
-rm -f /tmp/test_upload.pdf /tmp/bigfile.pdf /tmp/test.exe /tmp/fc_*.json "$ADMIN_COOKIE" "$EMPLOYER_COOKIE"
+rm -f /tmp/test_upload.pdf /tmp/bigfile.pdf /tmp/test.exe /tmp/fc_*.json /tmp/fc_big_err.json /tmp/fc_exe_err.json /tmp/download_out.bin "$ADMIN_COOKIE" "$EMPLOYER_COOKIE"
 exit $FAIL

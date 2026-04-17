@@ -26,23 +26,47 @@ FRONT=0
 API_STATUS=0
 API_FAIL_COUNT=0
 
+# Helper: check if Docker is available and daemon is running
+docker_available() {
+  command -v docker &>/dev/null && docker info &>/dev/null 2>&1
+}
+
 # --- Backend unit tests ---
 echo "=== Backend Unit Tests ==="
-if command -v mvn &>/dev/null && mvn -v >/dev/null 2>&1; then
+if docker_available; then
+  echo "  Running backend tests via Docker (maven:3.9-eclipse-temurin-17-alpine)..."
+  docker run --rm \
+    -v "$(pwd)/backend:/workspace" \
+    -w /workspace \
+    maven:3.9-eclipse-temurin-17-alpine \
+    mvn test -q 2>&1
+  UNIT=$?
+elif command -v mvn &>/dev/null && mvn -v >/dev/null 2>&1; then
+  echo "  Docker not available — falling back to local mvn (Docker preferred)."
   (cd backend && mvn test -q 2>&1)
   UNIT=$?
 elif [ -f backend/mvnw ] && (cd backend && ./mvnw -v >/dev/null 2>&1); then
+  echo "  Docker not available — falling back to local mvnw (Docker preferred)."
   (cd backend && ./mvnw test -q 2>&1)
   UNIT=$?
 else
-  echo "  [SKIP] Maven unavailable locally (JAVA_HOME/JDK issue)."
+  echo "  [SKIP] Neither Docker nor local Maven/JDK available."
   UNIT=2
 fi
 echo ""
 
 # --- Frontend tests ---
 echo "=== Frontend Tests ==="
-if command -v node &>/dev/null; then
+if docker_available; then
+  echo "  Running frontend tests via Docker (node:18-alpine)..."
+  docker run --rm \
+    -v "$(pwd)/frontend:/workspace" \
+    -w /workspace \
+    node:18-alpine \
+    sh -c "npm ci --silent && npm test" 2>&1
+  FRONT=$?
+elif command -v node &>/dev/null; then
+  echo "  Docker not available — falling back to local Node.js (Docker preferred)."
   if [ ! -d frontend/node_modules ]; then
     echo "  Installing frontend dependencies..."
     (cd frontend && npm install --silent 2>&1)
@@ -50,7 +74,7 @@ if command -v node &>/dev/null; then
   (cd frontend && npm test 2>&1)
   FRONT=$?
 else
-  echo "  [SKIP] Node.js not found. Install Node 18+ or use Docker."
+  echo "  [SKIP] Neither Docker nor local Node.js available."
   FRONT=2
 fi
 echo ""
@@ -84,11 +108,11 @@ echo "  Summary"
 echo "======================================"
 
 if [ $UNIT -eq 0 ]; then echo "  Backend tests:   PASSED"
-elif [ $UNIT -eq 2 ]; then echo "  Backend tests:   SKIPPED (mvn not found)"
+elif [ $UNIT -eq 2 ]; then echo "  Backend tests:   SKIPPED (mvn/Docker not found)"
 else echo "  Backend tests:   FAILED"; fi
 
 if [ $FRONT -eq 0 ]; then echo "  Frontend tests:  PASSED"
-elif [ $FRONT -eq 2 ]; then echo "  Frontend tests:  SKIPPED (node not found)"
+elif [ $FRONT -eq 2 ]; then echo "  Frontend tests:  SKIPPED (node/Docker not found)"
 else echo "  Frontend tests:  FAILED"; fi
 
 if [ $API_STATUS -eq 0 ]; then echo "  API tests:       PASSED"

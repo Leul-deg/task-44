@@ -36,17 +36,23 @@ curl -s -o /dev/null -c /tmp/rbac_emp.txt \
   -d "{\"username\":\"$EMPLOYER\",\"password\":\"StrongPass123!\"}"
 
 # Employer tries admin endpoints
-CODE=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/rbac_emp.txt \
-  -X GET "$BASE/admin/users")
+RESP=$(curl -s -w "\n%{http_code}" -b /tmp/rbac_emp.txt -X GET "$BASE/admin/users")
+BODY=$(echo "$RESP" | head -n -1)
+CODE=$(echo "$RESP" | tail -n 1)
 check "Employer cannot access admin/users → 403" "403" "$CODE"
+echo "$BODY" | grep -qE '"message"|"error"|"status"' || { echo "FAIL: 403 response for admin/users missing error field"; FAIL=$((FAIL+1)); }
 
-CODE=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/rbac_emp.txt \
-  -X GET "$BASE/review/queue")
+RESP=$(curl -s -w "\n%{http_code}" -b /tmp/rbac_emp.txt -X GET "$BASE/review/queue")
+BODY=$(echo "$RESP" | head -n -1)
+CODE=$(echo "$RESP" | tail -n 1)
 check "Employer cannot access review/queue → 403" "403" "$CODE"
+echo "$BODY" | grep -qE '"message"|"error"|"status"' || { echo "FAIL: 403 response for review/queue missing error field"; FAIL=$((FAIL+1)); }
 
-CODE=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/rbac_emp.txt \
-  -X GET "$BASE/admin/audit-logs")
+RESP=$(curl -s -w "\n%{http_code}" -b /tmp/rbac_emp.txt -X GET "$BASE/admin/audit-logs")
+BODY=$(echo "$RESP" | head -n -1)
+CODE=$(echo "$RESP" | tail -n 1)
 check "Employer cannot access audit-logs → 403" "403" "$CODE"
+echo "$BODY" | grep -qE '"message"|"error"|"status"' || { echo "FAIL: 403 response for audit-logs missing error field"; FAIL=$((FAIL+1)); }
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

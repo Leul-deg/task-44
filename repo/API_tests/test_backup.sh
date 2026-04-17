@@ -25,6 +25,7 @@ echo -e "\n[1] List existing backups (admin)"
 RESP=$(curl -s -o /tmp/backups_list.json -w "%{http_code}" "$BASE/api/admin/backup/list" -b /tmp/admin.txt)
 COUNT=$(python3 -c "import json; print(len(json.load(open('/tmp/backups_list.json'))))" 2>/dev/null || echo "?")
 check "List backups ($COUNT found)" "200" "$RESP"
+head -c1 /tmp/backups_list.json | grep -q '\[' || { echo "  ✗ FAIL: list backups response is not a JSON array"; FAIL=$((FAIL+1)); }
 
 echo -e "\n[2] Trigger backup (admin, step-up)"
 RESP=$(curl -s -o /tmp/backup.json -w "%{http_code}" -X POST "$BASE/api/admin/backup/trigger" \
@@ -32,6 +33,9 @@ RESP=$(curl -s -o /tmp/backup.json -w "%{http_code}" -X POST "$BASE/api/admin/ba
   -d "{\"stepUpPassword\":\"$JOBOPS_ADMIN_PASSWORD\"}")
 echo "  Response: $(cat /tmp/backup.json)"
 check "Trigger backup" "200" "$RESP"
+grep -q '"id"' /tmp/backup.json || { echo "  ✗ FAIL: trigger backup response missing id"; FAIL=$((FAIL+1)); }
+grep -q '"filename"' /tmp/backup.json || { echo "  ✗ FAIL: trigger backup response missing filename"; FAIL=$((FAIL+1)); }
+grep -q '"status"' /tmp/backup.json || { echo "  ✗ FAIL: trigger backup response missing status"; FAIL=$((FAIL+1)); }
 
 echo -e "\n[3] Verify backup count increased"
 RESP=$(curl -s -o /tmp/backups_list2.json -w "%{http_code}" "$BASE/api/admin/backup/list" -b /tmp/admin.txt)

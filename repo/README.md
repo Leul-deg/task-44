@@ -100,6 +100,18 @@ npm run dev
 - This bootstrap credential is supplied from your local environment and is not committed in the repository.
 - Additional users are provisioned through the Admin console (Admin → Users).
 
+## Development Credentials
+
+When running locally with the default `docker-compose.yml` (no `.env` file), these credentials apply:
+
+| Role     | Username  | Password                  | How to obtain |
+|----------|-----------|---------------------------|---------------|
+| ADMIN    | `admin`   | `ShiftAdmin!2026#Strong`  | Auto-seeded on first boot (the `BOOTSTRAP_ADMIN_PASSWORD` default in `docker-compose.yml`) |
+| EMPLOYER | _(none)_  | _(create one)_            | Log in as admin → Admin → Users → Create User, set Role = EMPLOYER |
+| REVIEWER | _(none)_  | _(create one)_            | Log in as admin → Admin → Users → Create User, set Role = REVIEWER |
+
+> **Note:** The bootstrap password is only a default for local development. Set a strong `BOOTSTRAP_ADMIN_PASSWORD` in your `.env` for any shared or production environment and rotate it after first login.
+
 ## User Roles
 
 | Role     | Capabilities |

@@ -97,11 +97,19 @@ APPROVE_CODE=$(curl -s -o /dev/null -w "%{http_code}" -b "$REVIEWER_COOKIE" -X P
   -d '{"rationale":"Looks good, approved for posting"}')
 check "Reviewer approves job" "200" "$APPROVE_CODE"
 
+# Verify job status is APPROVED after approve
+APPROVE_STATUS_BODY=$(curl -s -b "$EMPLOYER_COOKIE" -X GET "$BASE/jobs/$JOB_ID")
+( echo "$APPROVE_STATUS_BODY" | grep -q '"status":"APPROVED"' || echo "$APPROVE_STATUS_BODY" | grep -q '"status": "APPROVED"' ) || { echo "FAIL: job not in APPROVED status after approve"; FAIL=$((FAIL+1)); }
+
 # Publish
 PUBLISH_CODE=$(curl -s -o /dev/null -w "%{http_code}" -b "$EMPLOYER_COOKIE" -X POST "$BASE/jobs/$JOB_ID/publish" \
   -H "Content-Type: application/json" -H "X-XSRF-TOKEN: $CSRF_EMP" \
   -d '{"stepUpPassword":"StrongPass123!"}')
 check "Employer publishes job" "200" "$PUBLISH_CODE"
+
+# Verify job status is PUBLISHED after publish
+PUBLISH_STATUS_BODY=$(curl -s -b "$EMPLOYER_COOKIE" -X GET "$BASE/jobs/$JOB_ID")
+( echo "$PUBLISH_STATUS_BODY" | grep -q '"status":"PUBLISHED"' || echo "$PUBLISH_STATUS_BODY" | grep -q '"status": "PUBLISHED"' ) || { echo "FAIL: job not in PUBLISHED status after publish"; FAIL=$((FAIL+1)); }
 
 # Takedown
 TAKEDOWN_CODE=$(curl -s -o /dev/null -w "%{http_code}" -b "$REVIEWER_COOKIE" -X POST "$BASE/review/jobs/$JOB_ID/takedown" \
@@ -135,6 +143,10 @@ FINAL_CODE=$(curl -s -o /tmp/rv_final.json -w "%{http_code}" -b "$EMPLOYER_COOKI
 FINAL_STATUS=$(python3 -c "import json; print(json.load(open('/tmp/rv_final.json')).get('status',''))" 2>/dev/null)
 check "Final job GET returns 200" "200" "$FINAL_CODE"
 echo "  Final status: $FINAL_STATUS"
+
+# Verify final job status is PUBLISHED after appeal grant
+FINAL_BODY=$(cat /tmp/rv_final.json)
+( echo "$FINAL_BODY" | grep -q '"status":"PUBLISHED"' || echo "$FINAL_BODY" | grep -q '"status": "PUBLISHED"' ) || { echo "FAIL: job not in PUBLISHED status after appeal grant (got: $FINAL_STATUS)"; FAIL=$((FAIL+1)); }
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

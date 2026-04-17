@@ -73,11 +73,21 @@ CREATE_CODE=$(curl -s -o /tmp/jp_job.json -w "%{http_code}" -b "$EMPLOYER_COOKIE
 JOB_ID=$(python3 -c "import json; print(json.load(open('/tmp/jp_job.json')).get('id',''))" 2>/dev/null)
 check "Create job returns 200" "200" "$CREATE_CODE"
 
+# Validate create job response payload fields
+CREATE_BODY=$(cat /tmp/jp_job.json)
+echo "$CREATE_BODY" | grep -q '"id"' || { echo "FAIL: create job response missing id field"; FAIL=$((FAIL+1)); }
+echo "$CREATE_BODY" | grep -q '"title"' || { echo "FAIL: create job response missing title field"; FAIL=$((FAIL+1)); }
+( echo "$CREATE_BODY" | grep -q '"status":"DRAFT"' || echo "$CREATE_BODY" | grep -q '"status": "DRAFT"' ) || { echo "FAIL: create job response missing status:DRAFT"; FAIL=$((FAIL+1)); }
+
 # Get job
 GET_CODE=$(curl -s -o /tmp/jp_get.json -w "%{http_code}" -b "$EMPLOYER_COOKIE" -X GET "$BASE/jobs/$JOB_ID")
 STATUS=$(python3 -c "import json; print(json.load(open('/tmp/jp_get.json')).get('status',''))" 2>/dev/null)
 check "Get job returns 200" "200" "$GET_CODE"
 check "Job starts as DRAFT" "DRAFT" "$STATUS"
+
+# Validate GET job response contains status field
+GET_BODY=$(cat /tmp/jp_get.json)
+echo "$GET_BODY" | grep -q '"status"' || { echo "FAIL: GET job response missing status field"; FAIL=$((FAIL+1)); }
 
 # Edit draft
 EDIT_CODE=$(curl -s -o /dev/null -w "%{http_code}" -b "$EMPLOYER_COOKIE" -X PUT "$BASE/jobs/$JOB_ID" \
@@ -97,18 +107,26 @@ POST_SUBMIT_CODE=$(curl -s -o /dev/null -w "%{http_code}" -b "$EMPLOYER_COOKIE" 
 check "Edit after submit returns 400" "400" "$POST_SUBMIT_CODE"
 
 # Hourly pay below $12
-LOW_PAY_CODE=$(curl -s -o /dev/null -w "%{http_code}" -b "$EMPLOYER_COOKIE" -X POST "$BASE/jobs" \
+LOW_PAY_CODE=$(curl -s -o /tmp/jp_lowpay.json -w "%{http_code}" -b "$EMPLOYER_COOKIE" -X POST "$BASE/jobs" \
   -H "Content-Type: application/json" -H "X-XSRF-TOKEN: $CSRF_EMP" \
   -d "{\"title\":\"Low Pay Job\",\"description\":\"This is a test job posting with enough description text to pass validation requirements.\",\"categoryId\":$CATEGORY_ID,\"locationId\":$LOCATION_ID,\"payType\":\"HOURLY\",\"settlementType\":\"WEEKLY\",\"payAmount\":11.00,\"headcount\":5,\"weeklyHours\":20,\"contactPhone\":\"5551234567\",\"tags\":[\"test\"]}")
 check "Hourly pay below 12 returns 400" "400" "$LOW_PAY_CODE"
 
+# Validate error response contains a message or error field
+LOW_PAY_BODY=$(cat /tmp/jp_lowpay.json)
+( echo "$LOW_PAY_BODY" | grep -q '"message"' || echo "$LOW_PAY_BODY" | grep -q '"error"' ) || { echo "FAIL: low pay error response missing message/error field"; FAIL=$((FAIL+1)); }
+
 # Headcount 0
-ZERO_HC_CODE=$(curl -s -o /dev/null -w "%{http_code}" -b "$EMPLOYER_COOKIE" -X POST "$BASE/jobs" \
+ZERO_HC_CODE=$(curl -s -o /tmp/jp_zerohc.json -w "%{http_code}" -b "$EMPLOYER_COOKIE" -X POST "$BASE/jobs" \
   -H "Content-Type: application/json" -H "X-XSRF-TOKEN: $CSRF_EMP" \
   -d "{\"title\":\"Zero Headcount\",\"description\":\"This is a test job posting with enough description text to pass validation requirements.\",\"categoryId\":$CATEGORY_ID,\"locationId\":$LOCATION_ID,\"payType\":\"HOURLY\",\"settlementType\":\"WEEKLY\",\"payAmount\":25.00,\"headcount\":0,\"weeklyHours\":20,\"contactPhone\":\"5551234567\",\"tags\":[\"test\"]}")
 check "Headcount 0 returns 400" "400" "$ZERO_HC_CODE"
 
+# Validate error response contains a message or error field
+ZERO_HC_BODY=$(cat /tmp/jp_zerohc.json)
+( echo "$ZERO_HC_BODY" | grep -q '"message"' || echo "$ZERO_HC_BODY" | grep -q '"error"' ) || { echo "FAIL: zero headcount error response missing message/error field"; FAIL=$((FAIL+1)); }
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
-rm -f "$ADMIN_COOKIE" "$EMPLOYER_COOKIE" /tmp/jp_*.json
+rm -f "$ADMIN_COOKIE" "$EMPLOYER_COOKIE" /tmp/jp_*.json /tmp/jp_lowpay.json /tmp/jp_zerohc.json
 exit $FAIL
