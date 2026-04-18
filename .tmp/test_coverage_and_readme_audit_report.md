@@ -1,8 +1,8 @@
 # Unified Test Coverage + README Audit Report
-**Project:** ShiftWorks JobOps Platform  
-**Date:** 2026-04-17  
-**Auditor:** Claude Code (claude-sonnet-4-6)  
+**Project:** ShiftWorks JobOps Platform
+**Date:** 2026-04-18 (refreshed)
 **Mode:** Strict — endpoint-level inventory, actual file reads
+**Refresh scope:** Updated to reflect (a) the three new `@SpringBootTest` integration classes, (b) the complete list of service-layer unit tests, and (c) the README's shift to an unambiguous Docker-only contract (no host-based startup path).
 
 ---
 
@@ -10,12 +10,13 @@
 
 | Category | Score |
 |----------|-------|
-| Backend HTTP Controller Tests (all endpoints) | 40/40 |
-| Backend Service Unit Tests | 10/15 |
+| Backend HTTP Controller Tests (MockMvc, all endpoints) | 35/35 |
+| Backend Full-Context Integration Tests (`@SpringBootTest`) | 5/5 |
+| Backend Service Unit Tests | 14/15 |
 | Frontend View Unit Tests | 20/25 |
 | API Shell Integration Tests | 12/15 |
-| README Quality | 5/5 |
-| **Total** | **92/100** |
+| README Quality (Docker-only contract) | 5/5 |
+| **Total** | **91/100** |
 
 ---
 
@@ -234,17 +235,43 @@
 | BackupControllerTest.java | 6 | 3 backup endpoints |
 
 ### Service Unit Tests (`@ExtendWith(MockitoExtension.class)`)
-| File | Tests |
-|------|-------|
-| AlertServiceTest.java | 8 |
-| AdminStatsServiceTest.java | 4 |
+| File | Coverage focus |
+|------|----------------|
+| AdminDictionaryServiceTest.java | Category/location CRUD, dedup, active-flag enforcement |
+| AdminStatsServiceTest.java | Counts + time-windowed aggregates |
+| AdminUserServiceTest.java | User CRUD, role change, reset, step-up |
+| AlertServiceTest.java | Alert lifecycle + severity |
+| AlertServiceAuditTest.java | Audit emission on alert actions |
+| AnalyticsServiceTest.java | Post volume / status / takedown trend aggregation |
+| AnomalyDetectionServiceTest.java | Threshold + z-score anomaly rules |
+| AppealServiceTest.java | Appeal creation/process + state machine |
+| AuthServiceTest.java | Login, CAPTCHA threshold, lockout, password rotation |
+| BackupServiceTest.java | Scheduled backup + retention with mocked clock |
+| DashboardServiceTest.java | Whitelisted SQL, masked vs. unmasked export |
+| EncryptionServiceTest.java | AES-256-GCM key policy + roundtrip |
+| FileServiceTest.java | Whitelist, magic bytes, quarantine, watermark |
+| JobPostingServiceTest.java | Validation ranges, lifecycle, step-up, employer scoping |
+| ObjectLevelAuthorizationTest.java | Cross-tenant denial at service layer |
+| ReviewServiceTest.java | Queue, diff, approve/reject/takedown, step-up |
+| ScheduledReportServiceTest.java | Cron parsing + dispatch |
+| TicketServiceAuditTest.java | Ticket audit log emission |
 
-### True Integration Tests (Spring Boot + real DB)
+### Security Filter Tests
+| File | Coverage focus |
+|------|----------------|
+| CsrfValidationFilterTest.java | Header token matching, safe-method bypass, exclusions |
+| RateLimitFilterTest.java | Per-minute + per-IP token bucket |
+| SessionAuthFilterTest.java | Cookie lookup, idle/absolute expiry, password-rotation gate |
+
+### True Integration Tests (Spring Boot + real DB / real security chain)
 | File | Coverage |
 |------|----------|
 | AuditSchemaImmutabilityTest.java | Immutable delete semantics |
 | EncryptionIT.java | AES-256-GCM column encryption |
-| UserEmailUniquenessIT.java | DB constraint enforcement |
+| UserEmailUniquenessIT.java | DB unique constraint enforcement |
+| JobPostingServiceSpringIT.java | Full Spring context + H2 JPA + transparent AES-256-GCM encryption for job creation |
+| ActuatorPublicHealthIT.java | Anonymous `GET /actuator/health` (200), negative-exposure assertions for `/actuator/env\|beans\|heapdump\|threaddump\|shutdown\|…`, `show-details=never` body contract |
+| JobFlowFullStackIT.java | Full HTTP stack via MockMvc: session + CSRF filter chain, job POST happy path, missing/wrong CSRF → 403, encryption-at-rest verified through native `findRawContactPhoneById`, cross-employer HTTP isolation (403/404) |
 
 ---
 
@@ -306,18 +333,21 @@
 
 ## Part 5: README Audit
 
-| Item | Status |
-|------|--------|
-| Docker Quick Start instructions | PASS |
-| Local dev setup (Java + Node) | PASS |
-| Access URLs table | PASS |
-| Bootstrap admin credentials | PASS |
-| Development credentials table | PASS |
-| User Roles table | PASS |
-| Running Tests instructions | PASS |
-| Verified Runtime Evidence section | PASS |
-| Security Notes table | PASS |
-| Key Features list | PASS |
+The project is Docker-only by contract (Tech Stack → `Runtime: Docker, Docker Compose`; Prerequisites list only `Docker 20.10+` and `Docker Compose v2+`). The README now states this explicitly in two places — the Quick Start lede and the Running Tests section — and no host-based startup, `./mvnw`, `npm run dev`, or `java -jar` instruction remains.
+
+| Item | Status | Note |
+|------|--------|------|
+| Docker Quick Start instructions | PASS | `./scripts/check-env.sh` + `docker compose up --build` |
+| Docker-only contract declared | PASS | *"This project is Docker-only. There is no supported host-based startup path."* |
+| No host-based startup path advertised | PASS | `./mvnw` and `npm run …` references removed |
+| Access URLs table | PASS | |
+| Bootstrap admin credentials | PASS | Sourced from `BOOTSTRAP_ADMIN_PASSWORD` in `.env` |
+| Development credentials table | PASS | No hard-coded compose passwords |
+| User Roles table | PASS | |
+| Running Tests instructions (containerised) | PASS | `./run_tests.sh` + explicit Docker-based backend / frontend one-liners |
+| Verified Runtime Evidence section | PASS | |
+| Security Notes table | PASS | Every required secret flagged as *Not in compose* |
+| Key Features list | PASS | |
 
 **README audit: PASS**
 
@@ -325,30 +355,45 @@
 
 ## Part 6: Gap Summary
 
+### Closed since previous revision
+
+- **Slice-only "integration" coverage** — resolved. `JobPostingServiceSpringIT`, `JobFlowFullStackIT`, and the extended `ActuatorPublicHealthIT` now exercise the real Spring context + JPA + security chain, instead of relying exclusively on `@WebMvcTest` with `@MockBean`s.
+- **Full-stack CSRF proof** — resolved. `JobFlowFullStackIT.createJob_withoutCsrfHeader_returns403` and `createJob_withWrongCsrfHeader_returns403` post through the real filter order (`SessionAuthFilter` → `CsrfValidationFilter` → controller).
+- **Cross-tenant isolation over HTTP** — resolved. `JobFlowFullStackIT.employerB_cannotReadEmployerA_jobById` creates two employers with real persistence and asserts `403`/`404` on the cross-tenant GET.
+- **Actuator exposure surface was implicit** — resolved. `application.yml` now pins `management.endpoints.web.exposure.include=health` and `management.endpoint.health.show-details=never`, and `ActuatorPublicHealthIT.otherActuatorEndpoints_areNotExposed` enumerates `env|beans|heapdump|threaddump|shutdown|…` and asserts `4xx`.
+- **Service-layer breadth mis-reported** — corrected. 18 service-level unit test files exist (see Part 2), covering every major service: auth, job postings, review, appeals, files, dashboards, analytics, alerts, backup, admin users/dictionaries, scheduled reports, anomaly detection, encryption, tickets (audit), and cross-tenant authorization.
+- **README host-based path** — resolved. README now declares Docker-only and no `./mvnw` / `npm run` / `java -jar` startup instruction remains (see Part 5).
+
 ### Remaining Gaps (score deductions)
 
-**Backend Service Tests (−5 pts):**
-- Only AlertService and AdminStatsService have unit tests
-- ClaimService, FileService, JobPostingService, ReviewService, etc. have no service-layer tests
-- All business logic covered only at HTTP mock level, not unit-tested in isolation
+**Service layer completeness (−1 pt):**
+- `ClaimService` and `TicketService` proper still rely on controller-level MockMvc coverage rather than a dedicated service unit test (only `TicketServiceAuditTest` is present for tickets).
 
 **Frontend Views (−5 pts):**
-- 9 of 30 views lack spec files (AdminClaimsView, HomeView, JobPostingDetailView, JobPostingPreviewView, ReviewDetailView, DashboardBuilder, AdminDashboardView, AdminJobItemsView, AdminQuarantineView)
+- 9 of 30 views lack spec files: AdminClaimsView, HomeView, JobPostingDetailView, JobPostingPreviewView, ReviewDetailView, DashboardBuilder, AdminDashboardView, AdminJobItemsView, AdminQuarantineView.
 
 **API Shell Tests (−3 pts):**
-- Many endpoints only covered by @WebMvcTest (mocked), not end-to-end via API shell
-- ClaimController, FileController, DashboardController, ReportController, AnalyticsController have no shell tests
+- `ClaimController`, `FileController`, `DashboardController`, `ReportController`, and most of `AnalyticsController` have no end-to-end shell coverage — they are exercised only by `@WebMvcTest` slices (now supplemented by `JobFlowFullStackIT` for job flows, but not for these controllers).
 
 ---
 
-## Final Score: 92 / 100
+## Final Score: 91 / 100
+
+The rubric was rebalanced to carve out a **Full-Context Integration Tests** line (the `@SpringBootTest` tier added this session). Five points were moved from **HTTP Layer Coverage** (which no longer exclusively relies on MockMvc slices) into the new line, keeping the total at 100.
 
 | Category | Possible | Earned |
 |----------|----------|--------|
-| HTTP Layer Coverage (all 94 endpoints) | 40 | 40 |
-| Service Unit Tests | 15 | 10 |
+| HTTP Layer Coverage (all 94 endpoints, MockMvc) | 35 | 35 |
+| Full-Context Integration Tests (`@SpringBootTest`) | 5 | 5 |
+| Service Unit Tests | 15 | 14 |
 | Frontend View Tests | 25 | 20 |
 | API Shell Tests | 15 | 12 |
-| README Quality | 5 | 5 |
-| Deductions (known gaps) | 0 | −5 |
-| **Total** | **100** | **92** |
+| README Quality (Docker-only contract) | 5 | 5 |
+| **Total** | **100** | **91** |
+
+**Delta vs. previous revision (92/100):**
+
+- `+1` Service Unit Tests — inventory corrected from 2 files to 18 (ClaimService still pending).
+- `+5` Full-Context Integration Tests — new `JobPostingServiceSpringIT`, `ActuatorPublicHealthIT` (extended), `JobFlowFullStackIT`.
+- `−5` HTTP Layer Coverage weighting — category cap reduced from 40 to 35 as five points were reallocated to the new Integration line.
+- README category held at 5/5 — the earlier revision passed on "Local dev setup", which has now been removed; the category still earns full marks because the Docker-only contract is explicit and consistent.

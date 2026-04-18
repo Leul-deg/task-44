@@ -5,7 +5,9 @@ COPY pom.xml .
 RUN mvn -B -ntp dependency:go-offline
 
 COPY src ./src
-RUN mvn -B -ntp clean package
+# Tests still compile (catches breakage in test sources) but execution is gated by the dedicated
+# test pipeline in repo/run_tests.sh instead of duplicating Spring context boots in the image build.
+RUN mvn -B -ntp clean package -DskipTests
 
 FROM eclipse-temurin:17-jre
 WORKDIR /app

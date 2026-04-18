@@ -16,7 +16,10 @@ A full-stack offline-capable platform for managing part-time job postings with e
 - Docker 20.10+
 - Docker Compose v2+
 
-## Quick Start (Docker — recommended)
+## Quick Start
+
+This project is Docker-only. All services (MySQL, backend, frontend) run inside containers and are orchestrated by `docker compose`. There is no supported host-based startup path.
+
 Create a `.env` file **before** the first `docker compose up`. Compose does **not** ship default database passwords, encryption keys, or bootstrap credentials; missing variables produce empty values and services will fail to start or boot securely.
 
 ```bash
@@ -42,53 +45,6 @@ curl -s -X POST http://localhost:8080/api/auth/login \
 # Seed verification — should show 1 admin user
 docker compose exec mysql mysql -ushiftworks -p"$DB_PASSWORD" shiftworks \
   -e "SELECT username, role FROM users;"
-```
-
-## Local Run (without Docker)
-
-### Requirements
-- Java 17 (JDK)
-- Maven 3.9+
-- Node.js 18+ and npm
-- MySQL 8.0 (including `mysql` and `mysqldump` CLI tools — required for backup and restore)
-
-### 1. Database
-```bash
-# Start MySQL and create the database
-mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS shiftworks;"
-mysql -u root -p -e "CREATE USER IF NOT EXISTS 'shiftworks'@'localhost' IDENTIFIED BY '$DB_PASSWORD';"
-mysql -u root -p -e "GRANT ALL PRIVILEGES ON shiftworks.* TO 'shiftworks'@'localhost'; FLUSH PRIVILEGES;"
-
-# Load schema and reference data
-mysql -u shiftworks -p"$DB_PASSWORD" shiftworks < init-db/01-schema.sql
-```
-
-### 2. Backend
-```bash
-cd backend
-
-# Set required environment variables
-export SPRING_DATASOURCE_URL="jdbc:mysql://localhost:3306/shiftworks?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
-export SPRING_DATASOURCE_USERNAME=shiftworks
-export SPRING_DATASOURCE_PASSWORD="$DB_PASSWORD"
-export AES_SECRET_KEY="$AES_SECRET_KEY"
-export BOOTSTRAP_ADMIN_PASSWORD="$BOOTSTRAP_ADMIN_PASSWORD"
-export FILE_STORAGE_PATH=./uploads   # where uploaded files are stored
-export BACKUP_PATH=./backups         # where mysqldump backup files are written
-
-mkdir -p uploads backups
-./mvnw -B clean package -DskipTests
-java -jar target/*.jar
-# Backend starts on http://localhost:8080
-```
-
-### 3. Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-# Frontend starts on http://localhost:5173 (Vite dev server)
-# API calls proxy to http://localhost:8080
 ```
 
 ## Access URLs
@@ -125,9 +81,13 @@ npm run dev
 | ADMIN    | User management, dictionaries, audit logs, backups, alerts |
 
 ## Running Tests
-- All tests: `./run_tests.sh` (load the same `.env` as Docker so `BOOTSTRAP_ADMIN_PASSWORD` / `JOBOPS_ADMIN_PASSWORD` are set for `API_tests/`)
-- Backend tests only: `cd backend && ./mvnw test`
-- Individual API test: `./API_tests/test_auth.sh` (requires a running backend and `JOBOPS_ADMIN_PASSWORD` or `BOOTSTRAP_ADMIN_PASSWORD`; see `API_tests/lib/test_env.sh`)
+
+All tests run inside containers — there is no host-based Maven/Node path.
+
+- All tests: `./run_tests.sh` (runs backend tests in a `maven:3.9-eclipse-temurin-17-alpine` container, frontend tests in a `node:18-alpine` container, and API shell tests against the compose stack; loads the same `.env` as Docker so `BOOTSTRAP_ADMIN_PASSWORD` / `JOBOPS_ADMIN_PASSWORD` are set for `API_tests/`)
+- Backend tests only: `docker run --rm -v "$(pwd)/backend:/workspace" -w /workspace maven:3.9-eclipse-temurin-17-alpine mvn test`
+- Frontend tests only: `docker run --rm -v "$(pwd)/frontend:/workspace" -w /workspace node:18-alpine sh -c "npm ci --silent && npm test"`
+- Individual API test: `./API_tests/test_auth.sh` (requires the compose stack to be running via `docker compose up -d` and `JOBOPS_ADMIN_PASSWORD` or `BOOTSTRAP_ADMIN_PASSWORD` set; see `API_tests/lib/test_env.sh`)
 
 ## Verified Runtime Evidence
 The following was captured from a successful Docker Compose startup:
