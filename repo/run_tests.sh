@@ -87,10 +87,50 @@ echo ""
 
 # --- API functional tests ---
 echo "=== API Functional Tests ==="
-if ! curl -s http://localhost:8080/api/auth/captcha -o /dev/null 2>/dev/null; then
-  echo "  [SKIP] Backend not running at localhost:8080. Start with: docker compose up -d"
-  API_STATUS=2
+
+# Track whether THIS script started the compose stack so we can tear it down on exit.
+STARTED_STACK=0
+
+# Helper: poll the backend health endpoint until ready (or timeout).
+wait_for_backend() {
+  local timeout="${1:-180}"
+  local elapsed=0
+  while [ $elapsed -lt "$timeout" ]; do
+    if curl -fsS http://localhost:8080/api/auth/captcha -o /dev/null 2>/dev/null; then
+      return 0
+    fi
+    sleep 3
+    elapsed=$((elapsed+3))
+    if [ $((elapsed % 15)) -eq 0 ]; then
+      echo "  ...still waiting for backend ($elapsed/${timeout}s)"
+    fi
+  done
+  return 1
+}
+
+if curl -s http://localhost:8080/api/auth/captcha -o /dev/null 2>/dev/null; then
+  echo "  Backend already reachable at localhost:8080 — using existing stack."
+elif docker_available; then
+  echo "  Backend not reachable; starting compose stack via 'docker compose up -d --build'..."
+  if docker compose up -d --build >/dev/null 2>&1; then
+    STARTED_STACK=1
+    echo "  Stack started; waiting up to 180s for backend to become reachable..."
+    if ! wait_for_backend 180; then
+      echo "  [SKIP] Backend did not become reachable within 180s."
+      echo "  Last 30 lines of backend log:"
+      docker compose logs --tail=30 backend 2>&1 | sed 's/^/    /'
+      API_STATUS=2
+    fi
+  else
+    echo "  [SKIP] 'docker compose up' failed; cannot run API tests."
+    API_STATUS=2
+  fi
 else
+  echo "  [SKIP] Backend not running and Docker is not available."
+  API_STATUS=2
+fi
+
+if [ "$API_STATUS" = "0" ]; then
   FIRST=1
   for script in API_tests/test_*.sh; do
     [ -f "$script" ] || continue
@@ -106,6 +146,14 @@ else
   if [ $API_FAIL_COUNT -gt 0 ]; then
     API_STATUS=1
   fi
+fi
+
+# Tear down the stack only if we started it AND the operator did not opt to keep it.
+# Set KEEP_STACK=1 in the environment to leave it running for inspection.
+if [ "$STARTED_STACK" = "1" ] && [ "${KEEP_STACK:-0}" != "1" ]; then
+  echo ""
+  echo "  Tearing down compose stack (set KEEP_STACK=1 to keep it running)..."
+  docker compose down -v >/dev/null 2>&1 || true
 fi
 
 # --- Summary ---

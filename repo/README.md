@@ -89,7 +89,7 @@ docker compose exec mysql mysql -ushiftworks -p"$DB_PASSWORD" shiftworks \
 
 All tests run inside containers — there is no host-based Maven/Node path.
 
-- All tests: `./run_tests.sh` (runs backend tests in a `maven:3.9-eclipse-temurin-17-alpine` container, frontend tests in a `node:18-alpine` container, and API shell tests against the compose stack; loads the same `.env` as Docker so `BOOTSTRAP_ADMIN_PASSWORD` / `JOBOPS_ADMIN_PASSWORD` are set for `API_tests/`)
+- All tests: `./run_tests.sh` (runs backend tests in a `maven:3.9-eclipse-temurin-17-alpine` container, frontend tests in a `node:18-alpine` container, and API shell tests against the compose stack; loads the same `.env` as Docker so `BOOTSTRAP_ADMIN_PASSWORD` / `JOBOPS_ADMIN_PASSWORD` are set for `API_tests/`). If the backend is not already reachable on `localhost:8080`, the script automatically runs `docker compose up -d --build`, waits for it to become healthy, runs the API tests, and tears the stack down on exit. Set `KEEP_STACK=1` to leave the stack running for follow-up inspection.
 - Backend tests only: `docker run --rm -v "$(pwd)/backend:/workspace" -w /workspace maven:3.9-eclipse-temurin-17-alpine mvn test`
 - Frontend tests only: `docker run --rm -v "$(pwd)/frontend:/workspace" -w /workspace node:18-alpine sh -c "npm ci --silent && npm test"`
 - Individual API test: `./API_tests/test_auth.sh` (requires the compose stack to be running via `docker compose up -d` and `JOBOPS_ADMIN_PASSWORD` or `BOOTSTRAP_ADMIN_PASSWORD` set; see `API_tests/lib/test_env.sh`)
