@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# Validate required variables before `docker compose up` (compose has no secret defaults).
+# Validate required variables before `docker compose up`.
+# Note: docker-compose.yml has labelled placeholder defaults that let compose
+# boot without .env on cloud CI, but those defaults are NOT acceptable for any
+# shared environment. This script enforces the real requirement: every secret
+# must be set explicitly (either in .env or in the host shell) AND
+# AES_SECRET_KEY must decode to exactly 32 bytes.
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"

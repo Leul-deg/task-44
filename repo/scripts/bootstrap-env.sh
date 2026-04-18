@@ -2,11 +2,16 @@
 # Seed .env from .env.example when .env is missing.
 #
 # Intent:
-#   - docker-compose.yml deliberately has NO default secrets (see audit-01 finding #1).
-#   - Operators are expected to provide a populated .env.
-#   - CI / verification harnesses and first-run developers get a zero-config path
-#     here: a missing .env is auto-seeded from .env.example (placeholder values)
-#     with a loud warning. Compose itself stays free of embedded secrets.
+#   - docker-compose.yml carries clearly-labelled placeholder defaults
+#     (INSECURE_DEFAULT_… / INSECURE_32B_DEFAULT_…) so it boots on cloud CI
+#     even with no .env on disk. See audit-01 fix-check item #1 for the
+#     trade-off rationale.
+#   - This helper still seeds .env from .env.example for tooling that does
+#     NOT read compose substitutions (most importantly run_tests.sh and the
+#     API_tests/ harness, which need JOBOPS_ADMIN_PASSWORD /
+#     BOOTSTRAP_ADMIN_PASSWORD in the host shell).
+#   - Operators should still create a real .env (replacing every placeholder)
+#     for any shared or production-like environment.
 #
 # Exit codes:
 #   0  .env already present, OR successfully seeded from .env.example

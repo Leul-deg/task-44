@@ -20,19 +20,20 @@ A full-stack offline-capable platform for managing part-time job postings with e
 
 This project is Docker-only. All services (MySQL, backend, frontend) run inside containers and are orchestrated by `docker compose`. There is no supported host-based startup path.
 
-`docker-compose.yml` ships **no** default database passwords, encryption keys, or bootstrap credentials — every secret is sourced from a local `.env` file. A clean checkout therefore has no `.env`, and `docker compose up` would fail fast on missing variables. For first-run developers and CI/verification harnesses there is `scripts/bootstrap-env.sh`, which seeds `.env` from `.env.example` (placeholder values, loudly announced as **not** production-safe) only when `.env` is absent.
+`docker-compose.yml` carries **clearly-labelled placeholder defaults** for every required secret (`INSECURE_DEFAULT_REPLACE_VIA_DOTENV_*`, `INSECURE_32B_DEFAULT_REPLACE!!!!`) so that a clean checkout — including cloud CI/verification harnesses with no `.env` on disk — can run `docker compose up --build` and produce a healthy stack. These placeholders are unmistakable in logs and `docker compose config` and **must not** be used in any shared or production-like environment. For real deployments, create a local `.env` (which compose loads automatically and which overrides the placeholders) and replace every value.
 
 ```bash
-# First run on a clean checkout: seed .env from .env.example if missing.
-# Safe to run every time — it is a no-op when .env already exists.
-./scripts/bootstrap-env.sh
+# Cloud CI / first smoke test on a clean checkout — works with no .env present:
+docker compose up --build
 
-# Production / shared deployments: edit .env and replace every placeholder.
-# Required: MYSQL_ROOT_PASSWORD, DB_PASSWORD, AES_SECRET_KEY (exactly 32 bytes — see .env.example),
+# Real deployments: copy the template, replace every value, then bring the stack up.
+cp .env.example .env
+# Required: set MYSQL_ROOT_PASSWORD, DB_PASSWORD, AES_SECRET_KEY (exactly 32 bytes — see .env.example),
 # and BOOTSTRAP_ADMIN_PASSWORD (strong password, min length per SecretPolicyValidator).
 
-# Optional: fail fast if any required variable is missing or AES key length is invalid
-./scripts/check-env.sh
+# Optional helpers:
+./scripts/bootstrap-env.sh    # seed .env from .env.example if missing (no-op if .env exists)
+./scripts/check-env.sh        # fail fast if any required variable is missing or AES key length is invalid
 
 docker compose up --build
 ```
@@ -74,7 +75,7 @@ docker compose exec mysql mysql -ushiftworks -p"$DB_PASSWORD" shiftworks \
 | EMPLOYER | _(none)_ | _(create one)_             | Log in as admin → Admin → Users → Create User, set Role = EMPLOYER |
 | REVIEWER | _(none)_ | _(create one)_             | Log in as admin → Admin → Users → Create User, set Role = REVIEWER |
 
-> **Note:** There are no hard-coded compose passwords. Use a strong `BOOTSTRAP_ADMIN_PASSWORD` in `.env` even for local work, and rotate it after first login if the environment is shared.
+> **Note:** `docker-compose.yml` carries clearly-labelled placeholder defaults (prefixed `INSECURE_DEFAULT_…` / `INSECURE_32B_DEFAULT_…`) so a clean checkout boots on cloud CI without an `.env`. They are **not** safe credentials — always create a real `.env` (which compose loads automatically and which overrides the placeholders) for any shared or production-like environment, and rotate `BOOTSTRAP_ADMIN_PASSWORD` after first login.
 
 ## User Roles
 
@@ -144,17 +145,17 @@ admin       ADMIN
 
 | Variable | Purpose | In repository? | Guidance |
 |----------|---------|----------------|----------|
-| `AES_SECRET_KEY` | Column-level AES-256-GCM encryption key | **Not** in `docker-compose.yml` (required via `.env`) | Exactly **32 bytes**: 32 ASCII characters, or Base64 decoding to 32 raw bytes. Enforced at startup (`EncryptionService`, `SecretPolicyValidator`). |
-| `DB_PASSWORD` | MySQL application user password | **Not** in compose | Set in `.env`; never commit `.env` |
-| `MYSQL_ROOT_PASSWORD` | MySQL root password for Docker | **Not** in compose | Set in `.env` |
-| `BOOTSTRAP_ADMIN_PASSWORD` | Initial admin login password | **Not** in compose | Set in `.env`; must meet length/complexity checks when policy is enabled |
+| `AES_SECRET_KEY` | Column-level AES-256-GCM encryption key | Placeholder default in `docker-compose.yml` (`INSECURE_32B_DEFAULT_REPLACE!!!!`, exactly 32 chars) — overridden by `.env` | Exactly **32 bytes**: 32 ASCII characters, or Base64 decoding to 32 raw bytes. Enforced at startup (`EncryptionService`, `SecretPolicyValidator`). The placeholder satisfies the length check so the stack boots on cloud CI; rotate it for any real deployment. |
+| `DB_PASSWORD` | MySQL application user password | Placeholder default `INSECURE_DEFAULT_REPLACE_VIA_DOTENV_app` in compose — overridden by `.env` | Replace via `.env`; never commit a filled-in `.env`. |
+| `MYSQL_ROOT_PASSWORD` | MySQL root password for Docker | Placeholder default `INSECURE_DEFAULT_REPLACE_VIA_DOTENV_root` in compose — overridden by `.env` | Replace via `.env`. |
+| `BOOTSTRAP_ADMIN_PASSWORD` | Initial admin login password | Placeholder default `INSECURE_DEFAULT_REPLACE_VIA_DOTENV_admin` in compose — overridden by `.env` | Replace via `.env`; must meet length/complexity checks when policy is enabled. Rotate after first login on any shared environment. |
 | `COOKIE_SECURE` | Sets `Secure` flag on session cookies | Optional env | Set to `true` behind HTTPS |
 
-**Docker Compose:** Secret literals are not embedded in `docker-compose.yml`; variables are passed through from your shell or `.env` only.
+**Docker Compose:** `docker-compose.yml` carries clearly-labelled placeholder defaults (every default begins with `INSECURE_DEFAULT_…` or `INSECURE_32B_DEFAULT_…`) so a fresh checkout boots on cloud CI without any pre-staged `.env`. A local `.env` (when present) overrides every placeholder via standard compose substitution. The placeholders are visible verbatim in `docker compose config` and in container env, making them trivial to detect in any environment that should not be running them.
 
 **CAPTCHA:** Challenge answers are held in an in-memory store on the backend process. This matches a single-node offline deployment; it is not shared across multiple backend replicas without further design.
 
-> **Important:** Create `.env` from `.env.example` before `docker compose up`. Committing a filled-in `.env` must be avoided.
+> **Important:** Before any shared or production-like deployment, copy `.env.example` to `.env`, replace every value, and confirm with `./scripts/check-env.sh`. Do not commit a filled-in `.env`.
 
 ## Key Features
 - **Job Lifecycle**: Full status machine (Draft → Review → Approve → Publish)

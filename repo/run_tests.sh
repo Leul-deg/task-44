@@ -4,10 +4,11 @@ set -o pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Seed .env from .env.example on a clean checkout so `docker compose up` works
-# without operator intervention (CI/verification path). docker-compose.yml still
-# carries no embedded secrets — the seeded values are placeholders from
-# .env.example and are loudly announced as not production-safe.
+# Seed .env from .env.example on a clean checkout. docker-compose.yml has its
+# own labelled placeholder defaults (`INSECURE_DEFAULT_…`), so a missing .env
+# is no longer fatal for compose itself; this seed gives `run_tests.sh` (and
+# the API_tests/ harness) values like JOBOPS_ADMIN_PASSWORD that compose does
+# not inject. Safe to run repeatedly — the helper is a no-op when .env exists.
 if [ ! -f .env ] && [ -x scripts/bootstrap-env.sh ]; then
   scripts/bootstrap-env.sh || true
 fi

@@ -1,13 +1,19 @@
-# All secrets must be set in a local .env file (see .env.example). No secret defaults are embedded here.
+# Compose carries CLEARLY-LABELLED placeholder defaults so a clean checkout
+# (`git clone && docker compose up`) works on cloud CI/verification harnesses
+# that have no `.env` file. The defaults below begin with INSECURE_DEFAULT_…
+# / INSECURE_32B_DEFAULT_… so they are unmistakably placeholders, not realistic
+# weak passwords. Operators MUST override every value via a local `.env` (see
+# `.env.example` and `scripts/check-env.sh`) before exposing the stack to any
+# shared or production-like environment.
 services:
   mysql:
     image: mysql:8.0
     command: ["--log-bin-trust-function-creators=1"]
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-INSECURE_DEFAULT_REPLACE_VIA_DOTENV_root}
       MYSQL_DATABASE: shiftworks
       MYSQL_USER: shiftworks
-      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-INSECURE_DEFAULT_REPLACE_VIA_DOTENV_app}
     ports:
       - "3307:3306"
     volumes:
@@ -29,10 +35,11 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/shiftworks?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: shiftworks
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-INSECURE_DEFAULT_REPLACE_VIA_DOTENV_app}
       SPRING_SQL_INIT_MODE: never
-      AES_SECRET_KEY: ${AES_SECRET_KEY}
-      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD}
+      # AES_SECRET_KEY must be exactly 32 bytes; placeholder below is exactly 32 ASCII chars.
+      AES_SECRET_KEY: ${AES_SECRET_KEY:-INSECURE_32B_DEFAULT_REPLACE!!!!}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-INSECURE_DEFAULT_REPLACE_VIA_DOTENV_admin}
       FILE_STORAGE_PATH: /app/uploads
       BACKUP_PATH: /app/backups
     volumes:
