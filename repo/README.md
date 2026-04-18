@@ -20,11 +20,15 @@ A full-stack offline-capable platform for managing part-time job postings with e
 
 This project is Docker-only. All services (MySQL, backend, frontend) run inside containers and are orchestrated by `docker compose`. There is no supported host-based startup path.
 
-Create a `.env` file **before** the first `docker compose up`. Compose does **not** ship default database passwords, encryption keys, or bootstrap credentials; missing variables produce empty values and services will fail to start or boot securely.
+`docker-compose.yml` ships **no** default database passwords, encryption keys, or bootstrap credentials — every secret is sourced from a local `.env` file. A clean checkout therefore has no `.env`, and `docker compose up` would fail fast on missing variables. For first-run developers and CI/verification harnesses there is `scripts/bootstrap-env.sh`, which seeds `.env` from `.env.example` (placeholder values, loudly announced as **not** production-safe) only when `.env` is absent.
 
 ```bash
-cp .env.example .env
-# Required: set MYSQL_ROOT_PASSWORD, DB_PASSWORD, AES_SECRET_KEY (exactly 32 bytes — see .env.example),
+# First run on a clean checkout: seed .env from .env.example if missing.
+# Safe to run every time — it is a no-op when .env already exists.
+./scripts/bootstrap-env.sh
+
+# Production / shared deployments: edit .env and replace every placeholder.
+# Required: MYSQL_ROOT_PASSWORD, DB_PASSWORD, AES_SECRET_KEY (exactly 32 bytes — see .env.example),
 # and BOOTSTRAP_ADMIN_PASSWORD (strong password, min length per SecretPolicyValidator).
 
 # Optional: fail fast if any required variable is missing or AES key length is invalid

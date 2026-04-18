@@ -4,6 +4,14 @@ set -o pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Seed .env from .env.example on a clean checkout so `docker compose up` works
+# without operator intervention (CI/verification path). docker-compose.yml still
+# carries no embedded secrets — the seeded values are placeholders from
+# .env.example and are loudly announced as not production-safe.
+if [ ! -f .env ] && [ -x scripts/bootstrap-env.sh ]; then
+  scripts/bootstrap-env.sh || true
+fi
+
 if [ -f .env ]; then
   set -a
   . ./.env
